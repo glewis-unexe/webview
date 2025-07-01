@@ -11,11 +11,9 @@ function getFilenameAndExtension(pathfilename){
   return [filename, ext];
 }
 
-class FloodMapComponent  extends HTMLComponent {
+class FloodMapComponent  extends MapboxComponent {
     constructor() {
         super();
-
-        this.map_root = undefined;
 
         this.center = [8.76, 51.63];
         this.zoom = 15;
@@ -23,25 +21,6 @@ class FloodMapComponent  extends HTMLComponent {
         this.pitch = 0;
 
         this.popup = undefined;
-        this.style = '';
-        this.style = 'mapbox://styles/mapbox/streets-v12';
-        this.buildings = true;
-
-        this.add_navigation = true;
-        this.add_scale = true;
-
-        this.style_has_loaded = false;
-        this.terrain_exaggeration = 1.5;
-        this.show_buildings = true;
-
-        this.elements = {};
-        this.current_style_name = '';
-        this.current_building_style_name = '';
-        this.current_view_style_name = '';
-
-        this.style_labels = ['Vector', 'Satellite'];
-        this.building_labels = ['On', 'Off'];
-        this.view_labels = ['3D', '2D'];
 
         this.current_layer_name = '';
         this.layer_data = {};
@@ -49,68 +28,17 @@ class FloodMapComponent  extends HTMLComponent {
 
     oneTimeInit() {
         super.oneTimeInit();
-
-        this.current_style_name = this.style_labels[0];
-        this.current_building_style_name = this.building_labels[0];
-        this.current_view_style_name = this.view_labels[0];
     }
 
     onShow(parent) {
         super.onShow(parent);
 
-        this.elements = {};
-        let self = this;
-
-        this.content = document.createElement('div');
-        this.content.id = this.get_ID();
-        this.content.className = 'Square';
-        this.content.style.width = "100%";
-        this.content.style.height = "100vh";
-        this.content.style.backgroundColor = this.bg_colour;
-        this.root.appendChild(this.content);
-
-        this.map_root = document.createElement('div');
-        this.map_root.id = 'map';
-        this.map_root.style.position = 'absolute';
-        this.map_root.style.top = '54px';
-        this.map_root.style.bottom = '0px';
-        this.map_root.style.width = '100%';
-
-        this.content.appendChild(this.map_root);
-
         let top = '70px';
         let content_root = this.content;
 
-        this.elements['map.info.textbox'] = new Mapbox_Textbox(content_root, {
-            'left': '1vw',
-            'top': '120px',
-            'width': '20%',
-            'min-width': '300px',
-        });
-
-        this.elements['map.info.textbox'].set_text('Depth: n/a');
-
         this.elements['map.flood.legend'] = new Mapbox_LegendList(content_root,{
             'left': '1vw',
-            'top': '170px',
-        });
-
-        this.elements['map_style'] = new Mapbox_dropdown(content_root, {
-            'left': '1vw',
-            'top': top,
-            'width': 'max(160px, 10vw)',
-        });
-
-        this.elements['map_buildings'] = new Mapbox_dropdown(content_root, {
-            'left': 'max(180px, 12vw)',
-            'top': top,
-            'width': 'max(140px, 10vw)',
-        });
-
-        this.elements['map_projection'] = new Mapbox_dropdown(content_root, {
-            'left': 'max(330px, 23vw)',
-            'top': top,
-            'width': 'max(120px, 10vw)',
+            'top': '200px',
         });
 
         this.elements['map.sources.dropdown'] = new Mapbox_dropdown(content_root, {
@@ -120,118 +48,9 @@ class FloodMapComponent  extends HTMLComponent {
         });
 
 
-        this.elements['map.pos.textbox'] = new Mapbox_Textbox(content_root, {
-            'left': 'calc(100% - 375px)',
-            'top': top,
-            'width': 'max(300px, 3vw)'
-        } );
-
-        //fill out content for map dropboxes
-
-        for(let i=0;i < self.style_labels.length;i++){
-            let menu_item = new Mapbox_dropdown_item2(this.elements['map_style'], function (d) {
-                self.set_style(self.style_labels[i]);
-            });
-            menu_item.set_name(self.style_labels[i]);
-
-            this.elements['map_style'].append_menu_option(menu_item);
-        }
-
-        for(let i=0;i < self.building_labels.length;i++){
-            let menu_item = new Mapbox_dropdown_item2(this.elements['map_buildings'], function (d) {
-                self.set_building_style(self.building_labels[i]);
-            });
-            menu_item.set_name(self.building_labels[i]);
-
-            this.elements['map_buildings'].append_menu_option(menu_item);
-        }
-
-        for(let i=0;i < self.view_labels.length;i++){
-            let menu_item = new Mapbox_dropdown_item2(this.elements['map_projection'], function (d) {
-                self.set_projection_style(self.view_labels[i]);
-            });
-            menu_item.set_name(self.view_labels[i]);
-
-            this.elements['map_projection'].append_menu_option(menu_item);
-        }
-
-        this.style_has_loaded = false;
-        let props = {
-            container: this.map_root.id, // container ID
-            center: this.center, // starting position [lng, lat]
-            zoom: this.zoom, // starting zoom
-            bearing: this.bearing,
-            pitch: this.pitch
-        };
-
-        if (this.style != ''){
-            props['style'] = this.style;
-        }
-
-        this.map = new mapboxgl.Map(props);
-
-        this.map.on('move', () => {
-            this.on_move();
-        });
-
-        this.map.on('mousemove', (e) => {
-            self.on_mouse_move(e);
-        });
-
-        if(this.add_navigation) {
-            this.map.addControl(new mapboxgl.NavigationControl());
-        }
-
-        if(this.add_scale) {
-            this.map.addControl(new mapboxgl.ScaleControl());
-        }
-
-        this.map.on('style.load', () => {
-            this.style_has_loaded = true;
-            this.map.addSource('mapbox-dem', {
-                'type': 'raster-dem',
-                'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
-                'tileSize': 512,
-                'maxzoom': 14
-            });
-
-            // add the DEM source as a terrain layer with exaggerated height
-            this.map.setTerrain({'source': 'mapbox-dem', 'exaggeration': this.terrain_exaggeration});
-
-            if (this.style != '') {
-                if (this.buildings) {
-                    this.add_3d_buildings();
-                }
-
-                if (!(this.style.includes('satellite'))) {
-                    this.add_hill_shading();
-
-                    this.map.setFilter('poi-label', ['==', 'category_en', 'x']);
-                    this.map.setLayoutProperty('transit-label', 'visibility', 'none');
-                    this.map.setLayoutProperty('road-number-shield', 'visibility', 'none');
-                    this.map.setLayoutProperty('building-number-label', 'visibility', 'none');
-                    this.map.setLayoutProperty('crosswalks', 'visibility', 'none');
-                    this.map.setLayoutProperty('turning-feature', 'visibility', 'none');
-                    this.map.setLayoutProperty('turning-feature-outline', 'visibility', 'none');
-                }
-
-                const language = 'en';
-                this.map.setLayoutProperty('country-label', 'text-field', [
-                    'get',
-                    `name_${language}`
-                ]);
-            }
-
-            if (this.show_buildings){
-                this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
-            }else{
-                this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-            }
-
-            this.on_style_load();
-        });
-
         this.on_mouse_move = function(e){
+
+            this.fill_map_pos_textbox(e);
 
             let loc = this.map.getCenter();
             let features = undefined;
@@ -239,14 +58,6 @@ class FloodMapComponent  extends HTMLComponent {
             if (e !== undefined) {
                 features = this.map.queryRenderedFeatures(e.point);
                 loc = e.lngLat;
-            }
-            if ('map.pos.textbox' in this.elements) {
-
-                let text = 'Lng:' + loc.lng.toFixed(3);
-                text += ' | Lat: ' + loc.lat.toFixed(3);
-                text += ' | Zoom:' + this.map.getZoom().toFixed(1);
-
-                this.elements['map.pos.textbox'].set_text(text);
             }
 
             let text = '';
@@ -273,13 +84,7 @@ class FloodMapComponent  extends HTMLComponent {
     }
 
     on_style_load(){
-        this.on_move();
-
-        this.on_mouse_move(undefined);
-
-        this.set_style(this.current_style_name);
-        this.set_building_style(this.current_building_style_name);
-        this.set_projection_style(this.current_view_style_name);
+        super.on_style_load();
 
         this.popup = new mapboxgl.Popup({
             offset: 25,
@@ -391,153 +196,6 @@ class FloodMapComponent  extends HTMLComponent {
                 console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
             }
         });
-
-    }
-
-    on_move(){
-        this.center = this.map.getCenter();
-        this.zoom =this.map.getZoom();
-        this.bearing = this.map.getBearing();
-        this.pitch = this.map.getPitch();
-    }
-
-    on_mouse_move(e){
-        this.handle_mouse_move(e);
-    }
-
-    add_hill_shading(){
-        this.map.addSource('dem', {
-                    'type': 'raster-dem',
-                    'url': 'mapbox://mapbox.mapbox-terrain-dem-v1'
-                });
-
-        this.map.addLayer(
-            {
-                'id': 'hillshading',
-                'source': 'dem',
-                'type': 'hillshade'
-            },
-            // Insert below land-structure-polygon layer,
-            // where hillshading sits in the Mapbox Streets style.
-            'land-structure-polygon'
-        );
-    }
-
-    add_3d_buildings()
-    {
-        const layers = this.map.getStyle().layers;
-        const labelLayerId = layers.find(
-            (layer) => layer.type === 'symbol' && layer.layout['text-field']
-        ).id;
-
-        // The 'building' layer in the Mapbox Streets
-        // vector tileset contains building height data
-        // from OpenStreetMap.
-        this.map.addLayer(
-            {
-                'id': 'add-3d-buildings',
-                'source': 'composite',
-                'source-layer': 'building',
-                'filter': ['==', 'extrude', 'true'],
-                'type': 'fill-extrusion',
-                'minzoom': 12,
-                'paint': {
-                    'fill-extrusion-color': '#aaa',
-
-                    // Use an 'interpolate' expression to
-                    // add a smooth transition effect to
-                    // the buildings as the user zooms in.
-                    'fill-extrusion-height': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        12,
-                        0,
-                        12.05,
-                        ['get', 'height']
-                    ],
-                    'fill-extrusion-base': [
-                        'interpolate',
-                        ['linear'],
-                        ['zoom'],
-                        12,
-                        0,
-                        12.05,
-                        ['get', 'min_height']
-                    ],
-                    'fill-extrusion-opacity': 1.0
-                }
-            },
-            labelLayerId
-        );
-    }
-
-    set_style(style) {
-        let desired_style = '';
-
-        if (style === 'Vector'){
-            desired_style = 'mapbox://styles/mapbox/streets-v12';
-        }else{
-            desired_style = 'mapbox://styles/mapbox/satellite-streets-v12';
-        }
-
-        if (desired_style !== this.style) {
-
-            this.style = desired_style;
-
-            if (this.style_has_loaded) {
-                this.map.setStyle(this.style);
-            }
-
-            this.current_style_name = style;
-        }
-
-        this.elements['map_style'].set_button_text('Map Style: ' + this.current_style_name);
-    }
-
-    set_building_style(building_style) {
-        if (building_style === 'On') {
-            this.show_buildings = true;
-        } else {
-            this.show_buildings = false;
-        }
-
-        if (this.style_has_loaded) {
-            if (this.show_buildings){
-                this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
-            }else{
-                this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
-            }
-
-            this.current_building_style_name = building_style;
-        }
-
-        this.elements['map_buildings'].set_button_text('Buildings: ' + this.current_building_style_name);
-    }
-
-    set_projection_style(view_style){
-        if(view_style === '2D'){
-            this.terrain_exaggeration = 0;
-        }else{
-            this.terrain_exaggeration = 1.5;
-        }
-
-        if(this.style_has_loaded){
-            this.map.setTerrain({'source': 'mapbox-dem', 'exaggeration': this.terrain_exaggeration});
-
-            this.current_view_style_name = view_style;
-        }
-
-        this.elements['map_projection'].set_button_text('View: ' + this.current_view_style_name);
-    }
-
-    jumpTo(center, zoom){
-
-        if (zoom === undefined){
-            zoom = this.zoom;
-        }
-
-        this.map.jumpTo({center: center, zoom: zoom});
     }
 
     get_display_name_for_layer(item){
@@ -810,7 +468,7 @@ class AppScreen extends Screen_base
         this.root.appendChild(this.content_root);
 
         this.nav_selector.onShow(this.content_root);
-        this.nav_selector.set_current_item('Map View');
+        this.nav_selector.set_current_item('Traffic Lights');
     }
 
     input_handler(src, item_id){

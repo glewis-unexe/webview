@@ -1478,11 +1478,6 @@ class MapboxComponent  extends HTMLComponent {
 
         this.elements['map.info.textbox'].set_text('Depth: n/a');
 
-        this.elements['map.flood.legend'] = new Mapbox_LegendList(content_root,{
-            'left': '1vw',
-            'top': '170px',
-        });
-
         this.elements['map_style'] = new Mapbox_dropdown(content_root, {
             'left': '1vw',
             'top': top,
@@ -1500,13 +1495,6 @@ class MapboxComponent  extends HTMLComponent {
             'top': top,
             'width': 'max(120px, 10vw)',
         });
-
-        this.elements['map.sources.dropdown'] = new Mapbox_dropdown(content_root, {
-            'left': 'max(470px,34vw)',
-            'top': top,
-            'width': 'max(350px, 10vw)',
-        });
-
 
         this.elements['map.pos.textbox'] = new Mapbox_Textbox(content_root, {
             'left': 'calc(100% - 375px)',
@@ -1620,44 +1608,24 @@ class MapboxComponent  extends HTMLComponent {
         });
 
         this.on_mouse_move = function(e){
-
-            let loc = this.map.getCenter();
-            let features = undefined;
-
-            if (e !== undefined) {
-                features = this.map.queryRenderedFeatures(e.point);
-                loc = e.lngLat;
-            }
-            if ('map.pos.textbox' in this.elements) {
-
-                let text = 'Lng:' + loc.lng.toFixed(3);
-                text += ' | Lat: ' + loc.lat.toFixed(3);
-                text += ' | Zoom:' + this.map.getZoom().toFixed(1);
-
-                this.elements['map.pos.textbox'].set_text(text);
-            }
-
-            let text = '';
-
-            if (features !== undefined) {
-                for (let i = 0; i < features.length; i++) {
-                    if (features[i].layer.id === this.current_layer_name) {
-                        if ('depth' in features[i].properties) {
-                            text = 'Depth: ' + features[i].properties['depth'].toFixed(2) + 'm';
-                        }
-                        text += '\n';
-                    }
-                }
-            }
-
-            if (text === ''){
-                text = 'Depth: ' + 'n/a';
-            }
-
-            if ('map.info.textbox' in this.elements) {
-                this.elements['map.info.textbox'].set_text(text);
-            }
+            this.fill_map_pos_textbox(e);
         };
+    }
+
+    fill_map_pos_textbox(e){
+        let loc = this.map.getCenter();
+
+        if (e !== undefined) {
+            loc = e.lngLat;
+        }
+        if ('map.pos.textbox' in this.elements) {
+
+            let text = 'Lng:' + loc.lng.toFixed(3);
+            text += ' | Lat: ' + loc.lat.toFixed(3);
+            text += ' | Zoom:' + this.map.getZoom().toFixed(1);
+
+            this.elements['map.pos.textbox'].set_text(text);
+        }
     }
 
     on_style_load(){
@@ -1668,117 +1636,6 @@ class MapboxComponent  extends HTMLComponent {
         this.set_style(this.current_style_name);
         this.set_building_style(this.current_building_style_name);
         this.set_projection_style(this.current_view_style_name);
-
-        this.popup = new mapboxgl.Popup({
-            offset: 25,
-            maxWidth: 1200,
-            closeButton: false,
-            closeOnClick: true
-        });
-
-
-        this.layer_data = {};
-
-        //load data
-        let params = {};
-
-        let cmd = 'get_flood_data';
-
-        axios.get(cmd, {params: params}).then(response => {
-            if (response.status === 200) {
-
-                var record = response.data;
-
-                try {
-                    if (this.map) {
-                        if ('color_key' in record){
-
-                            let temp = [];
-                            for (let i = 0; i < record['color_key'].length; i++) {
-
-                                let current = record['color_key'][i];
-
-                                temp.push({
-                                    text: current.text,
-                                    color: current.color,
-                                    id: i
-                                });
-                            }
-
-                            if ('map.flood.legend' in this.elements) {
-                                this.elements['map.flood.legend'].init(temp);
-                            }
-                        }
-
-                        let temp = [];
-                        temp.push({name: 'none', layer: undefined});
-
-                        let print_timestamp = '';
-
-                        if ('timestamp_print' in record){
-                            print_timestamp = record['timestamp_print'];
-                        }
-
-                        if ('geojson' in record){
-                            for (let i = 0; i < record['geojson'].length; i++) {
-                                let current = record['geojson'][i];
-                                let layer_name = print_timestamp + ' ' + current.type + ' floodmap';
-                                let layer = new MapboxLayer_Geojson(layer_name, current.url, false);
-                                layer.init(this.map, this.current_layer_name === layer_name);
-                                this.layer_data[layer.layer_name] = layer;
-                                temp.push({name: layer.layer_name, layer:layer});
-                            }
-                        }
-
-                        if ('image' in record) {
-                            for (let i = 0; i < record['image'].length; i++) {
-                                let current = record['image'][i];
-                                let layer_name = 'Reference ' + current.type;
-                                let layer = new MapboxLayer_Raster(layer_name, current.url, record['rect']);
-                                layer.init(this.map,this.current_layer_name === layer_name);
-                                this.layer_data[layer.layer_name] = layer;
-                                temp.push({name: layer.layer_name, layer: layer});
-                            }
-                        }
-
-                        let self = this;
-                        this.elements['map.sources.dropdown'].reset();
-
-                        for (let i = 0; i < temp.length; i++) {
-
-                            let item = temp[i];
-
-                            if (i == 0) {
-                                if ('map.sources.dropdown' in this.elements) {
-                                    this.elements['map.sources.dropdown'].set_button_text('Source Layers');
-                                }
-                            }
-
-                            let menu_item = new Mapbox_dropdown_item2(this.elements['map.sources.dropdown'], function (d) {
-                                self.set_current_layer(item);
-                            });
-                            menu_item.set_name(item['name']);
-                            this.elements['map.sources.dropdown'].append_menu_option(menu_item);
-                        }
-
-                        for (let i = 0; i < temp.length; i++) {
-
-                            let item = temp[i];
-
-                            if (item.name === this.current_layer_name){
-                                this.elements['map.sources.dropdown'].set_button_text(item['name']);
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.log(e);
-                }
-            }
-        }).catch(function (error) {
-            if (error.response) {
-                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
-            }
-        });
 
     }
 
@@ -1926,38 +1783,6 @@ class MapboxComponent  extends HTMLComponent {
         }
 
         this.map.jumpTo({center: center, zoom: zoom});
-    }
-
-    get_display_name_for_layer(item){
-
-        if(item.name === 'none'){
-            return 'None';
-        }
-
-        let name = getFilenameAndExtension(item.layer.url);
-
-        if (item.layer instanceof MapboxLayer_Raster){
-            return 'Image ' + name[0].replace('_', ' ').replace('T', ' ').replace('Z', ' ');
-        }
-
-        if (item.layer instanceof MapboxLayer_Geojson){
-            return 'Geojson ' + name[0].replace('_', ' ').replace('T', ' ').replace('Z', ' ');
-        }
-
-        return 'Undefined';
-    }
-
-    set_current_layer(item) {
-
-        for (const [key, value] of Object.entries(this.layer_data)) {
-            value.set_visibility(false);
-        }
-
-        this.current_layer_name = item.name; //actual layer name, not the display name :S
-
-        item['layer'].set_visibility(true);
-
-        this.elements['map.sources.dropdown'].set_button_text(item['name']);
     }
 }
 
