@@ -1426,14 +1426,29 @@ class MapboxLayer_Geojson extends MapboxLayer
 
         this.has_edges = lines;
 
-        if (this.has_edges === undefined){
+        if (this.has_edges === undefined) {
             this.has_edges = false;
         }
 
         this.display_content = true;
 
         this.line_colour = '#000000';
+
+        this.edge_paint = {
+            'line-color': this.line_colour,
+            'line-width': {
+                'base': 1.75,
+                'stops': [
+                    [10, 0.01],
+                    [10, 1],
+                    [12, 2],
+                    [15, 4],
+                    [22, 50]
+                ]
+            }
+        };
     }
+
     init(map, is_visible)
     {
         super.init(map);
@@ -1479,11 +1494,12 @@ class MapboxLayer_Geojson extends MapboxLayer
                     data: layer_data
                 });
 
-                if (paint_data === undefined)
+                if (paint_data === undefined) {
                     paint_data = {
                         'fill-color': '#ff0000',
                         'fill-opacity': 0.25,
-                        };
+                    };
+                }
 
                 this.map.addLayer({
                     'id': this.layer_name,
@@ -1499,19 +1515,7 @@ class MapboxLayer_Geojson extends MapboxLayer
                         'id': this.layer_name +'_line',
                         'type': 'line',
                         'source': this.layer_name,
-                        'paint': {
-                            'line-color': this.line_colour,
-                            'line-width': {
-                                'base': 1.75,
-                                'stops': [
-                                    [10, 0.01],
-                                    [10, 1],
-                                    [12, 2],
-                                    [15, 4],
-                                    [22, 50]
-                                ]
-                            },
-                        }
+                        'paint': this.edge_paint
                     });
                 }
 
@@ -1629,14 +1633,14 @@ class MapboxComponent  extends HTMLComponent {
         let top = '70px';
         let content_root = this.content;
 
-        this.elements['map.info.textbox'] = new Mapbox_Textbox(content_root, {
+        /*this.elements['map.info.textbox'] = new Mapbox_Textbox(content_root, {
             'left': '1vw',
             'top': '120px',
             'width': '20%',
             'min-width': '300px',
         });
 
-        this.elements['map.info.textbox'].set_text('Depth: n/a');
+        this.elements['map.info.textbox'].set_text('Depth: n/a');*/
 
         this.elements['map_style'] = new Mapbox_dropdown(content_root, {
             'left': '1vw',
@@ -1766,10 +1770,6 @@ class MapboxComponent  extends HTMLComponent {
 
             this.on_style_load();
         });
-
-        this.on_mouse_move = function(e){
-            this.fill_map_pos_textbox(e);
-        };
     }
 
     fill_map_pos_textbox(e){
@@ -1807,7 +1807,7 @@ class MapboxComponent  extends HTMLComponent {
     }
 
     on_mouse_move(e){
-        this.handle_mouse_move(e);
+        this.fill_map_pos_textbox(e);
     }
 
     add_hill_shading(){

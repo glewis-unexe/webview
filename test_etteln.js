@@ -484,7 +484,7 @@ class AppScreen extends Screen_base
 
 let app = new AppScreen();
 
-function testapp_init(root) {
+function app_init(root) {
   let content_root = document.createElement('div');
   content_root.style.left = '0px';
   content_root.style.margin = '0';
