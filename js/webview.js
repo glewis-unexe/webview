@@ -1079,6 +1079,163 @@ class ChartGroup extends HTMLComponent {
     }
 }
 
+
+class FIWARETableComponent extends TableTextComponent{
+    constructor(payload) {
+        super();
+
+        this.columns = [
+            {name: 'Time', style: 'min-width: 200px; max-width: 200px', 'label': 'time'},
+            {name: 'Sensor', style: 'min-width: 100px; max-width: 150px', 'label': 'sensor_print'},
+            {name: 'Property', style: 'min-width: 200px; max-width: 220px', 'label': 'prop'},
+            {name: 'Value', style: 'min-width: 200px; max-width: 9999px', 'label': 'value_print'},
+        ];
+    }
+}
+
+class LogComponent extends TableTextComponent {
+    constructor(payload) {
+        super();
+
+        this.data_source = payload;
+
+        this.columns = [
+            {name: 'Time', style: 'min-width: 200px; max-width: 200px', 'label': 'date'},
+            {name: 'Level', style: 'min-width: 100px; max-width: 150px', 'label': 'level'},
+            {name: 'Module', style: 'min-width: 200px; max-width: 220px', 'label': 'module'},
+            {name: 'Message', style: 'min-width: 200px; max-width: 9999px', 'label': 'message'},
+        ];
+    }
+
+    oneTimeInit() {
+        super.oneTimeInit();
+    }
+
+    onShow(parent) {
+        let cmd = '../get_log_data';
+        let params = {};
+
+        axios.get(cmd, {params: params}).then(response => {
+            if (response.status === 200) {
+                try {
+                    this.data_source = response.data;
+                    super.onShow(parent);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }).catch(function (error) {
+            if (error.response) {
+                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
+            }
+        });
+    }
+}
+
+
+class SensorComponent extends FIWARETableComponent{
+    constructor(payload) {
+        super(payload);
+    }
+
+    onShow(parent) {
+        let cmd = 'get_current_sensor_data';
+        let params = {};
+
+        axios.get(cmd, {params: params}).then(response => {
+            if (response.status === 200) {
+                try {
+                    if ('device_data' in response.data) {
+                        this.data_source = response.data['device_data'];
+                    }else{
+                        this.data_source = response.data['Device'];
+                    }
+                    this.data_source = objSort(this.data_source, 'time', 'sensor_print', 'prop');
+                    this.number_of_elements = this.data_source.length;
+                    super.onShow(parent);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }).catch(function (error) {
+            if (error.response) {
+                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
+            }
+        });
+    }
+}
+
+class ForecastComponent extends FIWARETableComponent{
+    constructor(payload) {
+        super(payload);
+
+        this.data_source = objSort(payload['WeatherForecast'], 'time', 'sensor_print','prop');
+    }
+}
+
+class FIWAREChartComponent extends ChartGroup{
+    constructor(payload) {
+        super(payload);
+    }
+}
+
+class HistoricCharts extends FIWAREChartComponent{
+    constructor(payload) {
+        super(payload);
+
+        this.bg_colour = '#ff0000';
+    }
+
+    onShow(parent) {
+        let cmd = 'get_historic_sensor_data';
+        let params = {};
+
+        axios.get(cmd, {params: params}).then(response => {
+            if (response.status === 200) {
+                try {
+                    this.data_source = response.data['device_data'];
+                    this.number_of_elements = this.data_source.length;
+                    super.onShow(parent);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }).catch(function (error) {
+            if (error.response) {
+                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
+            }
+        });
+    }
+}
+
+class FutureCharts extends FIWAREChartComponent{
+    constructor(payload) {
+        super(payload);
+
+        this.bg_colour = '#00ff00';
+    }
+
+    onShow(parent) {
+        let cmd = 'get_forecast_sensor_data';
+        let params = {};
+
+        axios.get(cmd, {params: params}).then(response => {
+            if (response.status === 200) {
+                try {
+                    this.data_source = response.data['device_data'];
+                    this.number_of_elements = this.data_source.length;
+                    super.onShow(parent);
+                } catch (e) {
+                    console.log(e);
+                }
+            }
+        }).catch(function (error) {
+            if (error.response) {
+                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
+            }
+        });
+    }
+}
 class NavPills extends HTMLComponent
 {
     constructor(context) {
@@ -1297,7 +1454,7 @@ class MapboxLayer_Geojson extends MapboxLayer
     build_from_colourmap(layer_data){
     }
 
-    init_from_data(map,layer_data){
+    init_from_data(map,layer_data, render_type, paint_data){
         super.init(map);
 
         try {
@@ -1322,14 +1479,17 @@ class MapboxLayer_Geojson extends MapboxLayer
                     data: layer_data
                 });
 
+                if (paint_data === undefined)
+                    paint_data = {
+                        'fill-color': '#ff0000',
+                        'fill-opacity': 0.25,
+                        };
+
                 this.map.addLayer({
                     'id': this.layer_name,
-                    'type': 'fill',
+                    'type': render_type,
                     'source': this.layer_name,
-                    'paint': {
-                        'fill-color': ['get', 'color'],
-                        //'fill-opacity': ['get', 'opacity'],
-                        },
+                    'paint': paint_data,
 
                 });
 
