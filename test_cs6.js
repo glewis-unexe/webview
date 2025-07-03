@@ -2,237 +2,6 @@ mapboxgl.accessToken = 'pk.eyJ1IjoiZ2F6dGFzdGljIiwiYSI6ImNrYzA4Y2c4NjFoYnIyeHRic
 let server_url = 'http://localhost:8112/cs6_app/';
 let global_data = {};
 
-class MapboxLayerBase{
-
-    constructor(display)
-    {
-        if (display === undefined)
-        {
-            display = true;
-        }
-
-        this.display = display;
-        this.inited = false;
-
-        this.layer_name = 'undefined';
-        this.visibility = true;
-    }
-
-    init(map) {
-        this.inited = true;
-    }
-
-    islayer(map, layer_id){
-        let layers = map.getStyle().layers;
-
-        for (let i=0;i< layers.length;i++)
-        {
-            if (layers[i].id === layer_id){
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    set_visibility(visibility) {
-        this.visibility = visibility;
-    }
-
-    update_visibility(map) {
-        if (map) {
-            if (this.visibility === false) {
-                map.setLayoutProperty(this.layer_name, 'visibility', 'none');
-            } else {
-                map.setLayoutProperty(this.layer_name, 'visibility', 'visible');
-            }
-        }
-    }
-}
-
-class CS6GeojsonLayer extends MapboxLayerBase{
-    constructor(layer_name) {
-        super(true);
-        this.geojson_data = {};
-
-        this.source_name = layer_name;
-        this.layer_name = this.source_name + '-layer';
-
-        let dummy_features = {
-            "type": "FeatureCollection",
-            "name": this.layer_name,
-            "crs": {
-                "type": "name",
-                "properties": {
-                    "name": "urn:ogc:def:crs:OGC:1.3:CRS84"
-                }
-            },
-            "features": [],
-        };
-
-        this.geojson_data = dummy_features;
-    }
-
-    update(map)
-    {
-        if (this.display === false)
-        {
-            return;
-        }
-
-        if(this.init_pending === true){
-            return;
-        }
-        this.update_visibility(map);
-
-        try {
-            if (map.getSource(this.source_name) !== undefined) {
-                map.getSource(this.source_name).setData(this.geojson_data);
-            }
-        } catch (e) {
-            console.log('update:' + e);
-        }
-    }
-}
-
-class CS6SensorLayer extends CS6GeojsonLayer{
-    constructor(layer_name) {
-        super(layer_name);
-    }
-
-    init(map) {
-        let sensors = app.get_sensors_for_map();
-
-        this.geojson_data['features'] = [];
-
-        for(let i=0;i< sensors.length;i++){
-            let feature = {
-                'type': 'Feature',
-                "properties": {'name': sensors[i], 'color': 'rgba(163,163,246,255)'},
-                "geometry": {
-                    "type": 'Point',
-                    "coordinates": app.get_loc_for_sensor(sensors[i]),
-                },
-            };
-
-            this.geojson_data['features'].push(feature);
-        }
-
-        super.init(map);
-
-        if (this.display === false) {
-            return;
-        }
-
-        if (this.islayer(map, this.layer_name)) {
-            map.removeLayer(this.layer_name);
-            map.removeSource(this.source_name);
-        }
-
-        map.addSource(this.source_name, {
-            type: 'geojson',
-            // Use a URL for the value for the `data` property.
-            data: this.geojson_data
-        });
-
-        map.addLayer({
-            'id': this.layer_name,
-            'type': 'circle',
-            'source': this.source_name,
-            'paint': {
-                'circle-color': ['get', 'color'],
-                'circle-opacity': 1.0,
-                'circle-radius': {
-                    'base': 1.0,
-                    'stops': [
-                        [1, 0.01],
-                        [10, 8.0],
-                        [15, 7.5],
-                        [20, 20],
-                        [22, 15]
-                    ]
-                },
-                'circle-stroke-width': 2,
-                'circle-stroke-color': '#000000'
-            }
-        });
-
-        this.init_pending = false;
-        this.update(map);
-    }
-}
-
-class CS6RiverLayer extends CS6GeojsonLayer{
-    constructor(layer_name) {
-        super(layer_name);
-    }
-
-    /*
-    Agia varvara downstream -> add!
-    X Agia varvara reservoir
-    almopaias r discharge ???
-    X asomata reservoir
-    X ilarion reservoir
-    X kouloura junction
-    X niselli bridge
-    X polyfytos reservoir
-    X rapsomaniki junction
-    X sfikia reservoir
-
-
-     */
-
-    init(map) {
-        super.init(map);
-
-        if (this.display === false) {
-            return;
-        }
-
-        if (this.islayer(map, this.layer_name)) {
-            map.removeLayer(this.layer_name);
-            map.removeSource(this.source_name);
-        }
-
-        map.addSource(this.source_name, {
-            type: 'geojson',
-            // Use a URL for the value for the `data` property.
-            data: this.geojson_data
-        });
-
-        map.addLayer({
-            'id': this.layer_name,
-            'type': 'line',
-            'source': this.source_name,
-            'paint': {
-                //'line-color': ['get', 'color'],
-                'line-color': '#0095ff',
-                'line-width': {
-                    'base': 1.75,
-                    'stops': [
-                        [1, 1],
-                        [9, 10],
-                        [15, 14],
-                        [22, 50]
-                    ]
-                },
-            }
-        });
-
-        this.init_pending = true;
-
-        let cmd = server_url + 'get_river';
-
-        axios.get(cmd).then(response => {
-            this.geojson_data = response.data;
-            this.init_pending = false;
-            this.update(map);
-            }, (error) => {
-                console.log(error);
-            });
-    }
-}
-
 class CS6PinTable extends HTMLComponent{
     oneTimeInit(){
     }
@@ -353,17 +122,21 @@ class CS6MapComponent  extends MapboxComponent {
         let top = '70px';
         let content_root = this.content;
 
-        this.elements['map.flood.legend'] = new Mapbox_LegendList(content_root,{
+        this.elements['map.legend'] = new Mapbox_LegendList(content_root,{
             'left': 'calc(100vw - 350px)',
             'top': 'calc(100vh - 330px)',
         });
 
-        this.elements['map.flood.legend'].set_text('Legend');
+        this.elements['map.legend'].set_text('Legend');
     }
 
     on_mouse_move(e){
         super.on_mouse_move(e);
 
+        if(this.map === undefined){
+            return;
+        }
+        
         try {
             let loc = this.map.getCenter();
             let features = undefined;
@@ -379,26 +152,30 @@ class CS6MapComponent  extends MapboxComponent {
                 if (features !== undefined)
 
                     for (let i = 0; i < features.length; i++) {
-                        if (text.length == 0) {
-                        } else {
-                            text += '<br>';
-                        }
                         if (('layer' in features[i]) && (features[i]['layer']['id'] in this.layers)) {
-                            text += '<H3><b>' + features[i]['layer']['id'] + '</H3></b>';
+                            if(features[i]['layer']['id'] === 'Aliakmon Monitoring Stations'){
+                                if (text.length) {
+                                    text += '<br>';
+                                }
 
-                            //aliakmon digital twin nodes
-                            if (('properties' in features[i]) && ('name' in features[i]['properties'])) {
-                                text += features[i]['properties']['name'];
-                            }
-                            //aliakmon monitoring_stations
-                            if (('properties' in features[i]) && ('Name' in features[i]['properties'])) {
-                                text += features[i]['properties']['Name'];
+                                let prop = 'Name';
+                                text += '<H3><b>' + features[i]['properties'][prop] + '</H3></b>';
+                                text += '<H4>';
+                                text += app.get_pin_data('pin2', features[i]['properties'][prop]);
+                                text += '</H4>';
                             }
 
-                            //aliakmon basin hydrographic network
-                            if (('properties' in features[i]) && ('wb_name_el' in features[i]['properties'])) {
-                                text += features[i]['properties']['wb_name_el'];
-                                text += features[i]['properties']['wb_name_el'];
+                            if(features[i]['layer']['id'] === 'Aliakmon Digital Twin Nodes'){
+                                if (text.length) {
+                                    text += '<br>';
+                                }
+
+                                let prop = 'name';
+                                text += '<H3><b>' + features[i]['properties'][prop] + '</H3></b>';
+
+                                text += '<H4>';
+                                text += app.get_pin_data('pin1', features[i]['properties'][prop]);
+                                text += '</H4>';
                             }
                         }
                     }
@@ -427,6 +204,8 @@ class CS6MapComponent  extends MapboxComponent {
         });
 
         this.layers = {};
+
+        random_colour_rand.reset();
 
         let fill_data = {
                         'fill-color': '#ff0000',
@@ -467,62 +246,66 @@ class CS6MapComponent  extends MapboxComponent {
 
         let key = '';
 
-        key = 'Aliakmon Basin Boundaries';
-        this.layers[key] = new MapboxLayer_Geojson(key,undefined,true);
-        fill_data['fill-color'] = '#ff0000';
-        this.layers[key].edge_paint = line_data;
-        this.layers[key].edge_paint["line-color"] = fill_data['fill-color'];
-        this.layers[key].init_from_data(this.map,global_data[key.toLowerCase()], 'fill', fill_data);
-        this.layers[key].set_visibility(true);
-
-        legend_list.push({ text: key, color: fill_data['fill-color'],id: 0});
-
-        key = 'Aliakmon Lakes';
-        this.layers[key] = new MapboxLayer_Geojson(key,undefined,true);
-        fill_data['fill-color'] = '#0000ff';
-        this.layers[key].init_from_data(this.map,global_data[key.toLowerCase()], 'fill', fill_data);
-        this.layers[key].set_visibility(true);
-        legend_list.push({ text: key, color: fill_data['fill-color'],id: 0});
-
-        key = 'Aliakmon Digital Twin Nodes';
-        this.layers[key] = new MapboxLayer_Geojson(key,undefined,true);
-        circle_data['circle-color'] = '#ed09db';
-        this.layers[key].init_from_data(this.map,global_data[key.toLowerCase()], 'circle', circle_data);
-        this.layers[key].set_visibility(true);
-        legend_list.push({ text: key, color: circle_data['circle-color'],id: 0});
-
-        key = 'Aliakmon Monitoring_Stations';
-        this.layers[key] = new MapboxLayer_Geojson(key,undefined,true);
-        circle_data['circle-color'] = '#29edde';
-        this.layers[key].init_from_data(this.map,global_data[key.toLowerCase()], 'circle', circle_data);
-        this.layers[key].set_visibility(true);
-        legend_list.push({ text: key.replace('-',' '), color: circle_data['circle-color'],id: 0});
-
-        let rivers = ['Aliakmon Basin Hydrographic Network',
-            'almopaios_river',
-            'Aliakmon Main River',
-            'A0 to Thessaloniki',
-            'A0'
-        ];
-
-        for(let i=0;i<rivers.length;i++) {
-            key = rivers[i];
-            this.layers[key] = new MapboxLayer_Geojson(key, undefined, false);
-            line_data['line-color'] = getRandomColor();
-            this.layers[key].init_from_data(this.map, global_data[key.toLowerCase()], 'line', line_data);
+        if (true) {
+            key = 'Aliakmon Basin Boundaries';
+            this.layers[key] = new MapboxLayer_Geojson(key, undefined, true);
+            fill_data['fill-color'] = '#ff0000';
+            this.layers[key].edge_paint = line_data;
+            this.layers[key].edge_paint["line-color"] = fill_data['fill-color'];
+            this.layers[key].init_from_data(this.map, global_data[key], 'fill', fill_data);
             this.layers[key].set_visibility(true);
 
-            legend_list.push({ text: key.replace('almopaios_river','Almopaios River'), color: line_data['line-color'],id: 0});
+            legend_list.push({text: key, color: fill_data['fill-color'], id: 0});
+
+            key = 'Aliakmon Lakes';
+            this.layers[key] = new MapboxLayer_Geojson(key, undefined, true);
+            fill_data['fill-color'] = '#0000ff';
+            this.layers[key].init_from_data(this.map, global_data[key], 'fill', fill_data);
+            this.layers[key].set_visibility(true);
+            legend_list.push({text: key, color: fill_data['fill-color'], id: 0});
         }
 
-        if ('map.flood.legend' in this.elements) {
-            let temp = [];
+        if (true) {
+            key = 'Aliakmon Digital Twin Nodes';
+            this.layers[key] = new MapboxLayer_Geojson(key, undefined, true);
+            circle_data['circle-color'] = '#ed09db';
+            this.layers[key].init_from_data(this.map, global_data[key], 'circle', circle_data);
+            this.layers[key].set_visibility(true);
+            legend_list.push({text: key, color: circle_data['circle-color'], id: 0});
+        }
 
-            temp.push({
-                text: 'thing 1', color: '#ff0000',id: 0}
-            );
+        if (true) {
+            key = 'Aliakmon Monitoring Stations';
+            this.layers[key] = new MapboxLayer_Geojson(key, undefined, true);
+            circle_data['circle-color'] = '#29edde';
+            this.layers[key].init_from_data(this.map, global_data[key], 'circle', circle_data);
+            this.layers[key].set_visibility(true);
+            legend_list.push({text: key.replace('-', ' '), color: circle_data['circle-color'], id: 0});
+        }
 
-            this.elements['map.flood.legend'].init(legend_list);
+        if (true) {
+            let rivers = ['Aliakmon Basin Hydrographic Network',
+                'Almopaios River',
+                'Aliakmon Main River',
+                'A0 to Thessaloniki',
+                'A0'
+            ];
+
+            for (let i = 0; i < rivers.length; i++) {
+                key = rivers[i];
+                this.layers[key] = new MapboxLayer_Geojson(key, undefined, false);
+                line_data['line-color'] = getRandomColor();
+                this.layers[key].init_from_data(this.map, global_data[key], 'line', line_data);
+                this.layers[key].set_visibility(true);
+
+                legend_list.push({text: key, color: line_data['line-color'], id: 0});
+            }
+        }
+
+        if ('map.legend' in this.elements) {
+            legend_list = objSort(legend_list,'text');
+
+            this.elements['map.legend'].init(legend_list);
         }
     }
 }
@@ -585,8 +368,8 @@ class AppScreen extends Screen_base
 
         this.components = {};
         this.components['Map'] = new CS6MapComponent();
-        this.components['Current Sensors Table'] = new SensorComponent();
-        this.components['Historic Charts'] = new HistoricCharts();
+        this.components['Current Sensors Table'] = new SensorComponent({'cmd':server_url + 'get_current_sensor_data'});
+        this.components['Historic Charts'] = new HistoricCharts({'cmd':server_url + 'get_historic_sensor_data'});
         this.components['Pin Table'] = new CS6PinTable();
 
         for (const [key, component] of Object.entries(this.components)) {
@@ -629,36 +412,19 @@ class AppScreen extends Screen_base
         }
     }
 
-    get_sensors_for_map() {
-        return Object.keys(this.data['pin1']);
-    }
-
-    get_loc_for_sensor(loc){
-        let lookup = {
-            "Agia Varvara Downstream": [22.270,40.500],
-            "Polyfytos Reservoir": [21.973, 40.233],
-            "Almopaios R Discharge":  [22.585,40.542],
-            "Sfikia Reservoir": [22.190, 40.390],
-            "Agia Varvara Reservoir": [22.257, 40.4888],
-            "Asomata Reservoir": [22.243, 40.473],
-            "Niselli Bridge Discharge": [22.471, 40.583],
-            "Ilarion Reservoir": [22.070, 40.293],
-            "Rapsomaniki Junction": [22.358, 40.551],
-            "Kouloura Junction": [22.315, 40.552],
-
-        };
-
-    return lookup[loc];
-}
-
-
-    get_text_for_sensor(sensor_name) {
+    get_pin_data(pin_name, group_label){
         let result = '';
 
-        for(let i=0;i< this.data['pin1'][sensor_name].length;i++){
-            let data = this.data['pin1'][sensor_name][i];
-            result +=data['time'] +' ' + data['sensor_print'] +' ' + data['prop'] + ' ' + data['value_print'];
-            result += '<br>';
+        try {
+            group_label = group_label.replace('_', ' ');
+
+            for (let i = 0; i < this.data[pin_name][group_label].length; i++) {
+                let data = this.data[pin_name][group_label][i];
+                result += data['time'].replace('T', ' ').replace('Z', ' ') + ' ' + data['sensor_print'] + ' ' + data['prop'] + ' ' + data['value_print'];
+                result += '<br>';
+            }
+        }catch (e) {
+            console.log(e);
         }
 
         return result;

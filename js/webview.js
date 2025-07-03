@@ -732,6 +732,9 @@ class TableTextComponent extends HTMLComponent {
         container.appendChild(table);
 
         let head = document.createElement('thead');
+        head.style.position = 'sticky';
+        head.style.padding = '40px';
+        head.style.top = '0';
         table.appendChild(head);
 
 
@@ -1136,13 +1139,18 @@ class LogComponent extends TableTextComponent {
 class SensorComponent extends FIWARETableComponent{
     constructor(payload) {
         super(payload);
+
+        this.cmd = 'get_current_sensor_data';
+
+        if ((payload !== undefined) && ('cmd' in payload)){
+            this.cmd = payload['cmd'];
+        }
     }
 
     onShow(parent) {
-        let cmd = 'get_current_sensor_data';
         let params = {};
 
-        axios.get(cmd, {params: params}).then(response => {
+        axios.get(this.cmd, {params: params}).then(response => {
             if (response.status === 200) {
                 try {
                     if ('device_data' in response.data) {
@@ -1184,13 +1192,18 @@ class HistoricCharts extends FIWAREChartComponent{
         super(payload);
 
         this.bg_colour = '#ff0000';
+
+        this.cmd = 'get_historic_sensor_data';
+
+        if ((payload !== undefined) && ('cmd' in payload)){
+            this.cmd = payload['cmd'];
+        }
     }
 
     onShow(parent) {
-        let cmd = 'get_historic_sensor_data';
         let params = {};
 
-        axios.get(cmd, {params: params}).then(response => {
+        axios.get(this.cmd, {params: params}).then(response => {
             if (response.status === 200) {
                 try {
                     this.data_source = response.data['device_data'];
