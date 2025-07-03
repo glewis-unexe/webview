@@ -1447,6 +1447,13 @@ class MapboxLayer_Geojson extends MapboxLayer
                 ]
             }
         };
+
+        this.render_type = 'fill';
+        this.paint_data = {
+                        'fill-color': '#ff0000',
+                        'fill-opacity': 1.0,
+                        };
+
     }
 
     init(map, is_visible)
@@ -1456,7 +1463,7 @@ class MapboxLayer_Geojson extends MapboxLayer
 
         axios.get(this.url, {params: params}).then(response => {
             if (response.status === 200) {
-                this.init_from_data(this.map,response.data);
+                this.init_from_data(this.map,response.data, this.render_type,this.paint_data);
                 this.set_visibility(is_visible);
             }
         }).catch(function (error) {

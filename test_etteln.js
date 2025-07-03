@@ -140,6 +140,12 @@ class FloodMapComponent  extends MapboxComponent {
                                 let current = record['geojson'][i];
                                 let layer_name = print_timestamp + ' ' + current.type + ' floodmap';
                                 let layer = new MapboxLayer_Geojson(layer_name, current.url, false);
+
+                                layer.paint_data = {
+                                    'fill-color': ['get', 'color'],
+                                    'fill-opacity': 0.7,
+                                };
+
                                 layer.init(this.map, this.current_layer_name === layer_name);
                                 this.layer_data[layer.layer_name] = layer;
                                 temp.push({name: layer.layer_name, layer:layer});
