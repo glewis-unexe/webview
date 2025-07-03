@@ -310,6 +310,124 @@ class CS6MapComponent  extends MapboxComponent {
     }
 }
 
+
+
+class CS6Charts extends ChartGroup{
+    constructor(payload) {
+        super(payload);
+    }
+
+    onShow(parent) {
+
+        this.data_source = [{
+            "labels": [
+                ["2025-06-28"
+                ],
+                ["2025-06-29"
+                ],
+                ["2025-06-30"
+                ],
+                ["2025-07-01"
+                ],
+                ["2025-07-02"
+                ],
+                ["2025-07-03"
+                ]
+            ],
+
+            "tooltip": {
+                "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
+                "shared": true,
+
+                "formatter": function()
+                {
+                    if (this.points !== undefined)
+                    {
+                        let text = '';
+                        if (this.points[0].key.length ==1 )
+                        {
+                            text = this.points[0].key[0].replace('<br>', ' ');
+                        }
+                        else
+                        {
+                            text += this.points[0].key[1]; // date
+                            text += ' ';
+                            text += this.points[0].key[0]; // time
+                        }
+
+                        text += '<br>';
+
+
+                        for(let i=0;i<this.points.length;i++)
+                        {
+                            text += this.points[i].series.name;
+                            text += ': ';
+                            text += '<b>';
+                            text += this.points[i].y.toFixed(2);
+                            text += this.points[i].series.tooltipOptions.valueSuffix;
+                            text += '</b>';
+                            text += '<br>';
+                        }
+
+                        return text;
+                    }
+
+                    return 'help';
+
+                }
+            },
+
+            "yAxis" :[
+                {"title": {'text':'left axis'}},
+                {"title": {'text':'right axis'}, 'opposite':true},
+            ],
+            "main_text": "Thing 1", "name": "1", "sub_text": "1", "tick_interval": 1, "unit_text": "m3/s",
+            "y_plotlines": [
+                {"color": "#FF0000", "value": 9999, "width": 2},
+                {"color": "#FF00FF", "value": 0, "width": 2}
+            ],
+            "series" : [{"name": "name 1",
+                    "marker": false,
+                    "showInLegend": false,
+                    "data": [
+                        3.02,
+                        8.22,
+                        8.09,
+                        7.97,
+                        7.84,
+                        8
+                    ],
+                    "yAxis": 0,
+                    "type": 'line',
+                    "color": '#ff0000',
+                    "tooltip": {"valueSuffix": ' m1'},
+                },
+
+                {"name": "name 2",
+                "marker": false,
+                "showInLegend": false,
+                "data": [
+                    63.02,
+                    1008.22,
+                    1118.09,
+                    2227.97,
+                    1117.84,
+                    1000
+                ],
+                "yAxis": 1,
+                "type": 'line',
+                "color": '#071af8',
+                "tooltip": {"valueSuffix": ' m2'},
+                },
+
+            ]
+        }];
+        this.number_of_elements = this.data_source.length;
+        super.onShow(parent);
+    }
+
+}
+
 class AppScreen extends Screen_base
 {
     constructor(props) {
@@ -371,6 +489,7 @@ class AppScreen extends Screen_base
         this.components['Current Sensors Table'] = new SensorComponent({'cmd':server_url + 'get_current_sensor_data'});
         this.components['Historic Charts'] = new HistoricCharts({'cmd':server_url + 'get_historic_sensor_data'});
         this.components['Pin Table'] = new CS6PinTable();
+        this.components['CS6 Charts'] = new CS6Charts({'cmd':server_url + 'get_historic_sensor_data'});
 
         for (const [key, component] of Object.entries(this.components)) {
             component.oneTimeInit();

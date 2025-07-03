@@ -887,6 +887,14 @@ class ChartComponent extends HTMLComponent {
             chart_defintion['tooltip'].formatter = this.tooltip_formatter;
         }
 
+        if ('tooltip' in this.current_chart){
+            chart_defintion['tooltip'] = this.current_chart['tooltip'];
+        }
+
+        if ('legend' in this.current_chart){
+            chart_defintion['legend'] = this.current_chart['legend'];
+        }
+
         if (this.xaxis_label_formatter !== undefined){
             chart_defintion['xAxis']['labels'].formatter = this.xaxis_label_formatter;
         }
