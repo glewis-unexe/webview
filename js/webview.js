@@ -853,6 +853,10 @@ class ChartComponent extends HTMLComponent {
             chart_defintion.xAxis.categories = this.current_chart['labels'];
         }
 
+        if ('height' in  this.current_chart) {
+            chart_defintion.chart.height = this.current_chart['height'];
+        }
+
         if ('tick_interval' in this.current_chart) {
             chart_defintion.xAxis.tickInterval = this.current_chart['tick_interval'];
         }else{
