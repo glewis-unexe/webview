@@ -319,113 +319,226 @@ class CS6Charts extends ChartGroup{
 
     onShow(parent) {
 
-        this.data_source = [{
-            "labels": [
-                ["2025-06-28"
-                ],
-                ["2025-06-29"
-                ],
-                ["2025-06-30"
-                ],
-                ["2025-07-01"
-                ],
-                ["2025-07-02"
-                ],
-                ["2025-07-03"
-                ]
-            ],
+        this.data_source = [];
 
-            "tooltip": {
-                "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
-                "shared": true,
+        let cmd = server_url + 'get_chart_data';
 
-                "formatter": function()
-                {
-                    if (this.points !== undefined)
-                    {
-                        let text = '';
-                        if (this.points[0].key.length ==1 )
-                        {
-                            text = this.points[0].key[0].replace('<br>', ' ');
+        let params = {};
+
+        let rand_col = new Random(1234);
+
+        axios.get(cmd, {params: params}).then(response => {
+            if (response.status === 200) {
+                for (const [key,value] in response.data['device_data']){
+
+                    rand_col.reset();
+
+                    let value = response.data['device_data'][key];
+
+                    let entry = {
+                        'labels':value['labels'],
+                        "yAxis" :[],
+                        "series" : [],
+                        "main_text": "Chart: " + key,
+                        "name": "add name",
+                        "sub_text": "add subtext",
+                        "tick_interval": 24,
+                        "unit_text": "n/a",
+
+                        "height": 500+'px',
+
+                        "tooltip": {
+                            "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
+                            "shared": true,
+
+                            "formatter": function()
+                            {
+                                if (this.points !== undefined)
+                                {
+                                    let text = '';
+                                    if (this.points[0].key.length ==1 )
+                                    {
+                                        text = this.points[0].key[0].replace('<br>', ' ');
+                                    }
+                                    else
+                                    {
+                                        text += this.points[0].key[1]; // date
+                                        text += ' ';
+                                        text += this.points[0].key[0]; // time
+                                    }
+
+                                    text += '<br>';
+
+
+                                    for(let i=0;i<this.points.length;i++)
+                                    {
+                                        text += this.points[i].series.name;
+                                        text += ': ';
+                                        text += '<b>';
+                                        text += this.points[i].y.toFixed(2);
+                                        text += this.points[i].series.tooltipOptions.valueSuffix;
+                                        text += '</b>';
+                                        text += '<br>';
+                                    }
+
+                                    return text;
+                                }
+
+                                return 'help';
+
+                            }
+                        },
+                    };
+
+                    this.data_source.push(entry);
+
+                    let current_axis = 0;
+                    for (const variable in value['variable'] ) {
+
+                        let variable_value = value['variable'][variable];
+
+                        entry['yAxis'].push({"title": {'text': variable + ' (' + variable_value['unitCode']+')'}, 'opposite': current_axis&1?true:false});
+
+
+                        for (let i = 0; i < variable_value['sensors'].length; i++) {
+                            let sensor = variable_value['sensors'][i];
+
+                            let series_data = {
+                                "name": sensor['name'],
+                                "marker": false,
+                                "showInLegend": false,
+                                "data": sensor['data'],
+                                "yAxis": current_axis,
+                                "type": 'line',
+                                "color": rand_col.getRandomColor(),
+                                "tooltip": {"valueSuffix": ' ' + variable_value['unitCode'] }
+                            };
+
+                            entry['series'].push(series_data);
                         }
-                        else
-                        {
-                            text += this.points[0].key[1]; // date
-                            text += ' ';
-                            text += this.points[0].key[0]; // time
-                        }
-
-                        text += '<br>';
-
-
-                        for(let i=0;i<this.points.length;i++)
-                        {
-                            text += this.points[i].series.name;
-                            text += ': ';
-                            text += '<b>';
-                            text += this.points[i].y.toFixed(2);
-                            text += this.points[i].series.tooltipOptions.valueSuffix;
-                            text += '</b>';
-                            text += '<br>';
-                        }
-
-                        return text;
+                        current_axis += 1;
                     }
-
-                    return 'help';
-
                 }
-            },
 
-            "yAxis" :[
-                {"title": {'text':'left axis'}},
-                {"title": {'text':'right axis'}, 'opposite':true},
-            ],
-            "main_text": "Thing 1", "name": "1", "sub_text": "1", "tick_interval": 1, "unit_text": "m3/s",
-            "y_plotlines": [
-                {"color": "#FF0000", "value": 9999, "width": 2},
-                {"color": "#FF00FF", "value": 0, "width": 2}
-            ],
-            "series" : [{"name": "name 1",
+                /*
+            this.data_source = [{
+                "labels": [
+                    ["2025-06-28"
+                    ],
+                    ["2025-06-29"
+                    ],
+                    ["2025-06-30"
+                    ],
+                    ["2025-07-01"
+                    ],
+                    ["2025-07-02"
+                    ],
+                    ["2025-07-03"
+                    ]
+                ],
+
+                "tooltip": {
+                    "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
+                    "shared": true,
+
+                    "formatter": function()
+                    {
+                        if (this.points !== undefined)
+                        {
+                            let text = '';
+                            if (this.points[0].key.length ==1 )
+                            {
+                                text = this.points[0].key[0].replace('<br>', ' ');
+                            }
+                            else
+                            {
+                                text += this.points[0].key[1]; // date
+                                text += ' ';
+                                text += this.points[0].key[0]; // time
+                            }
+
+                            text += '<br>';
+
+
+                            for(let i=0;i<this.points.length;i++)
+                            {
+                                text += this.points[i].series.name;
+                                text += ': ';
+                                text += '<b>';
+                                text += this.points[i].y.toFixed(2);
+                                text += this.points[i].series.tooltipOptions.valueSuffix;
+                                text += '</b>';
+                                text += '<br>';
+                            }
+
+                            return text;
+                        }
+
+                        return 'help';
+
+                    }
+                },
+
+                "yAxis" :[
+                    {"title": {'text':'left axis'}},
+                    {"title": {'text':'right axis'}, 'opposite':true},
+                ],
+                "main_text": "Thing 1",
+                "name": "1",
+                "sub_text": "1",
+                "tick_interval": 1,
+                "unit_text": "m3/s",
+
+                "y_plotlines": [
+                    {"color": "#FF0000", "value": 9999, "width": 2},
+                    {"color": "#FF00FF", "value": 0, "width": 2}
+                ],
+                "series" : [{"name": "name 1",
+                        "marker": false,
+                        "showInLegend": false,
+                        "data": [
+                            3.02,
+                            8.22,
+                            8.09,
+                            7.97,
+                            7.84,
+                            8
+                        ],
+                        "yAxis": 0,
+                        "type": 'line',
+                        "color": '#ff0000',
+                        "tooltip": {"valueSuffix": ' m1'},
+                    },
+
+                    {"name": "name 2",
                     "marker": false,
                     "showInLegend": false,
                     "data": [
-                        3.02,
-                        8.22,
-                        8.09,
-                        7.97,
-                        7.84,
-                        8
+                        63.02,
+                        1008.22,
+                        1118.09,
+                        2227.97,
+                        1117.84,
+                        1000
                     ],
-                    "yAxis": 0,
+                    "yAxis": 1,
                     "type": 'line',
-                    "color": '#ff0000',
-                    "tooltip": {"valueSuffix": ' m1'},
-                },
+                    "color": '#071af8',
+                    "tooltip": {"valueSuffix": ' m2'},
+                    },
 
-                {"name": "name 2",
-                "marker": false,
-                "showInLegend": false,
-                "data": [
-                    63.02,
-                    1008.22,
-                    1118.09,
-                    2227.97,
-                    1117.84,
-                    1000
-                ],
-                "yAxis": 1,
-                "type": 'line',
-                "color": '#071af8',
-                "tooltip": {"valueSuffix": ' m2'},
-                },
-
-            ]
-        }];
-        this.number_of_elements = this.data_source.length;
-        super.onShow(parent);
+                ]
+            }];
+            */
+                this.number_of_elements = this.data_source.length;
+                super.onShow(parent);
+            }
+        }).catch(function (error) {
+            if (error.response) {
+                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
+            }
+        });
     }
-
 }
 
 class AppScreen extends Screen_base
