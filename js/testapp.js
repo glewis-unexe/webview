@@ -1,6 +1,5 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiZ2F6dGFzdGljIiwiYSI6ImNrYzA4Y2c4NjFoYnIyeHRicmZuaTgyMGQifQ.fkkbIOCwq4j70CqNeiBGcA';
-let server_url = 'http://localhost:8111/';
-//let server_url = '';
+let server_url = 'http://localhost:8112/cs6_app/';
 let global_data = {};
 
 class CS6PinTable extends HTMLComponent{
@@ -124,8 +123,8 @@ class CS6MapComponent  extends MapboxComponent {
         let content_root = this.content;
 
         this.elements['map.legend'] = new Mapbox_LegendList(content_root,{
-            'left': 'calc(100vw - 340px)',
-            'top': 'calc(100vh - 380px)',
+            'left': 'calc(100vw - 350px)',
+            'top': 'calc(100vh - 330px)',
         });
 
         this.elements['map.legend'].set_text('Legend');
@@ -312,6 +311,7 @@ class CS6MapComponent  extends MapboxComponent {
 }
 
 
+
 class CS6Charts extends ChartGroup{
     constructor(payload) {
         super(payload);
@@ -329,97 +329,207 @@ class CS6Charts extends ChartGroup{
 
         axios.get(cmd, {params: params}).then(response => {
             if (response.status === 200) {
+                for (const [key,value] in response.data['device_data']){
 
-                let data= JSON.parse(JSON.stringify(response.data['device_data']));
+                    rand_col.reset();
 
-                for (const [key,value] in response.data['device_data']) {
+                    let value = response.data['device_data'][key];
 
-                    try {
-                        rand_col.reset();
+                    let entry = {
+                        'labels':value['labels'],
+                        "yAxis" :[],
+                        "series" : [],
+                        "main_text": "Chart: " + key,
+                        "name": "add name",
+                        "sub_text": "add subtext",
+                        "tick_interval": 24,
+                        "unit_text": "n/a",
 
-                        let value = response.data['device_data'][key];
+                        "height": 500+'px',
 
-                        let entry = {
-                            'labels': value['labels'],
-                            "yAxis": [],
-                            "series": [],
-                            "main_text": "Chart: " + key,
-                            "name": "add name",
-                            "sub_text": "add subtext",
-                            "tick_interval": 24,
-                            "unit_text": "n/a",
+                        "tooltip": {
+                            "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
+                            "shared": true,
 
-                            "height": 500 + 'px',
-
-                            "tooltip": {
-                                "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
-                                "shared": true,
-
-                                "formatter": function () {
-                                    if (this.points !== undefined) {
-                                        let text = '';
-                                        if (this.points[0].key.length == 1) {
-                                            text = this.points[0].key[0].replace('<br>', ' ');
-                                        } else {
-                                            text += this.points[0].key[1]; // date
-                                            text += ' ';
-                                            text += this.points[0].key[0]; // time
-                                        }
-
-                                        text += '<br>';
-
-
-                                        for (let i = 0; i < this.points.length; i++) {
-                                            text += this.points[i].series.name;
-                                            text += ': ';
-                                            text += '<b>';
-                                            text += this.points[i].y.toFixed(2);
-                                            text += this.points[i].series.tooltipOptions.valueSuffix;
-                                            text += '</b>';
-                                            text += '<br>';
-                                        }
-
-                                        return text;
+                            "formatter": function()
+                            {
+                                if (this.points !== undefined)
+                                {
+                                    let text = '';
+                                    if (this.points[0].key.length ==1 )
+                                    {
+                                        text = this.points[0].key[0].replace('<br>', ' ');
+                                    }
+                                    else
+                                    {
+                                        text += this.points[0].key[1]; // date
+                                        text += ' ';
+                                        text += this.points[0].key[0]; // time
                                     }
 
-                                    return 'help';
+                                    text += '<br>';
 
+
+                                    for(let i=0;i<this.points.length;i++)
+                                    {
+                                        text += this.points[i].series.name;
+                                        text += ': ';
+                                        text += '<b>';
+                                        text += this.points[i].y.toFixed(2);
+                                        text += this.points[i].series.tooltipOptions.valueSuffix;
+                                        text += '</b>';
+                                        text += '<br>';
+                                    }
+
+                                    return text;
                                 }
-                            },
-                        };
 
-                        this.data_source.push(entry);
+                                return 'help';
 
-                        let current_axis = 0;
-                        for (const variable in value['variable']) {
-
-                            let variable_value = value['variable'][variable];
-
-                            entry['yAxis'].push({"title": {'text': variable + ' (' + variable_value['unitCode'] + ')'}, 'opposite': current_axis & 1 ? true : false});
-
-
-                            for (let i = 0; i < variable_value['sensors'].length; i++) {
-                                let sensor = variable_value['sensors'][i];
-
-                                let series_data = {
-                                    "name": sensor['name'],
-                                    "marker": false,
-                                    "showInLegend": false,
-                                    "data": sensor['data'],
-                                    "yAxis": current_axis,
-                                    "type": 'line',
-                                    "color": rand_col.getRandomColor(),
-                                    "tooltip": {"valueSuffix": ' ' + variable_value['unitCode']}
-                                };
-
-                                entry['series'].push(series_data);
                             }
-                            current_axis += 1;
+                        },
+                    };
+
+                    this.data_source.push(entry);
+
+                    let current_axis = 0;
+                    for (const variable in value['variable'] ) {
+
+                        let variable_value = value['variable'][variable];
+
+                        entry['yAxis'].push({"title": {'text': variable + ' (' + variable_value['unitCode']+')'}, 'opposite': current_axis&1?true:false});
+
+
+                        for (let i = 0; i < variable_value['sensors'].length; i++) {
+                            let sensor = variable_value['sensors'][i];
+
+                            let series_data = {
+                                "name": sensor['name'],
+                                "marker": false,
+                                "showInLegend": false,
+                                "data": sensor['data'],
+                                "yAxis": current_axis,
+                                "type": 'line',
+                                "color": rand_col.getRandomColor(),
+                                "tooltip": {"valueSuffix": ' ' + variable_value['unitCode'] }
+                            };
+
+                            entry['series'].push(series_data);
                         }
-                    } catch (e) {
-                        console.log(e);
+                        current_axis += 1;
                     }
                 }
+
+                /*
+            this.data_source = [{
+                "labels": [
+                    ["2025-06-28"
+                    ],
+                    ["2025-06-29"
+                    ],
+                    ["2025-06-30"
+                    ],
+                    ["2025-07-01"
+                    ],
+                    ["2025-07-02"
+                    ],
+                    ["2025-07-03"
+                    ]
+                ],
+
+                "tooltip": {
+                    "pointFormat": '{series.name}: <b>{point.y:.4f}</b><br/>',
+                    "shared": true,
+
+                    "formatter": function()
+                    {
+                        if (this.points !== undefined)
+                        {
+                            let text = '';
+                            if (this.points[0].key.length ==1 )
+                            {
+                                text = this.points[0].key[0].replace('<br>', ' ');
+                            }
+                            else
+                            {
+                                text += this.points[0].key[1]; // date
+                                text += ' ';
+                                text += this.points[0].key[0]; // time
+                            }
+
+                            text += '<br>';
+
+
+                            for(let i=0;i<this.points.length;i++)
+                            {
+                                text += this.points[i].series.name;
+                                text += ': ';
+                                text += '<b>';
+                                text += this.points[i].y.toFixed(2);
+                                text += this.points[i].series.tooltipOptions.valueSuffix;
+                                text += '</b>';
+                                text += '<br>';
+                            }
+
+                            return text;
+                        }
+
+                        return 'help';
+
+                    }
+                },
+
+                "yAxis" :[
+                    {"title": {'text':'left axis'}},
+                    {"title": {'text':'right axis'}, 'opposite':true},
+                ],
+                "main_text": "Thing 1",
+                "name": "1",
+                "sub_text": "1",
+                "tick_interval": 1,
+                "unit_text": "m3/s",
+
+                "y_plotlines": [
+                    {"color": "#FF0000", "value": 9999, "width": 2},
+                    {"color": "#FF00FF", "value": 0, "width": 2}
+                ],
+                "series" : [{"name": "name 1",
+                        "marker": false,
+                        "showInLegend": false,
+                        "data": [
+                            3.02,
+                            8.22,
+                            8.09,
+                            7.97,
+                            7.84,
+                            8
+                        ],
+                        "yAxis": 0,
+                        "type": 'line',
+                        "color": '#ff0000',
+                        "tooltip": {"valueSuffix": ' m1'},
+                    },
+
+                    {"name": "name 2",
+                    "marker": false,
+                    "showInLegend": false,
+                    "data": [
+                        63.02,
+                        1008.22,
+                        1118.09,
+                        2227.97,
+                        1117.84,
+                        1000
+                    ],
+                    "yAxis": 1,
+                    "type": 'line',
+                    "color": '#071af8',
+                    "tooltip": {"valueSuffix": ' m2'},
+                    },
+
+                ]
+            }];
+            */
                 this.number_of_elements = this.data_source.length;
                 super.onShow(parent);
             }
@@ -478,6 +588,7 @@ class AppScreen extends Screen_base
                 } catch (e) {
                     console.log(e);
                 }
+
             }
         }).catch(function (error) {
             if (error.response) {
@@ -485,16 +596,13 @@ class AppScreen extends Screen_base
             }
         });
 
-        let h = 'calc(100vh - 60px)';
 
         this.components = {};
         this.components['Map'] = new CS6MapComponent();
         this.components['Current Sensors Table'] = new SensorComponent({'cmd':server_url + 'get_current_sensor_data'});
-        this.components['Current Sensors Table'].height = h;
+        this.components['Historic Charts'] = new HistoricCharts({'cmd':server_url + 'get_historic_sensor_data'});
+        this.components['Pin Table'] = new CS6PinTable();
         this.components['CS6 Charts'] = new CS6Charts({'cmd':server_url + 'get_historic_sensor_data'});
-        this.components['CS6 Charts'].height = h;
-        this.components['App Log'] = new LogComponent({'cmd':server_url + 'get_log_data'});
-        this.components['App Log'].height = h;
 
         for (const [key, component] of Object.entries(this.components)) {
             component.oneTimeInit();
@@ -556,35 +664,19 @@ class AppScreen extends Screen_base
 }
 
 let app = new AppScreen();
-function app_init(root) {
+function testapp_init(root) {
+    let content_root = document.createElement('div');
+    content_root.style.left = '0px';
+    content_root.style.margin = '0';
+    content_root.style.padding = '0';
+    content_root.id = 'my_app_root';
+    content_root.overflowY = 'hidden';
 
-    let cmd = server_url + 'get_map_data';
+    content_root.style.bottom = '0px';
+    content_root.style.backgroundColor = '#ff0000';
 
-    let params = {};
+    root.appendChild(content_root);
 
-    axios.get(cmd, {params: params}).then(response => {
-        if (response.status === 200) {
-
-            global_data = response.data;
-
-            let content_root = document.createElement('div');
-            content_root.style.left = '0px';
-            content_root.style.margin = '0';
-            content_root.style.padding = '0';
-            content_root.id = 'my_app_root';
-            content_root.overflowY = 'hidden';
-
-            content_root.style.bottom = '0px';
-            content_root.style.backgroundColor = '#ff0000';
-
-            root.appendChild(content_root);
-
-            app.oneTimeInit(content_root);
-            app.onShow(content_root);
-        }
-    }).catch(function (error) {
-        if (error.response) {
-            console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
-        }
-    });
+    app.oneTimeInit(content_root);
+    app.onShow(content_root);
 }

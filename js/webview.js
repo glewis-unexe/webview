@@ -561,6 +561,8 @@ class HTMLComponent
     constructor() {
         this.uid = unique_element_index;
         unique_element_index += 1;
+
+        this.height = 'calc(100vh)';
     }
 
     get_ID(){
@@ -722,7 +724,7 @@ class TableTextComponent extends HTMLComponent {
 
         container.className = 'container-fullwidth';
         container.id = this.get_ID();
-        container.style.cssText = 'height: calc( 100vh - 145px); width:100%; padding:0;';
+        container.style.cssText = 'height: ' + this.height +'; width:100%; padding-left:1%; padding=right:1% margin:0;';
         container.style.overflowY = 'scroll';
 
         let table = document.createElement('table');
@@ -1062,7 +1064,7 @@ class ChartGroup extends HTMLComponent {
         let row = document.createElement('div');
         row.className = 'row';
         row.id = this.get_ID();
-        row.style.cssText = 'height: calc( 100vh - 145px); width:100%; padding:0; margin:0;';
+        row.style.cssText = 'height: ' + this.height +'; width:100%; padding:1%; margin:0;';
         row.style.overflowY = 'scroll';
 
         parent.appendChild(row);
@@ -1112,7 +1114,11 @@ class LogComponent extends TableTextComponent {
     constructor(payload) {
         super();
 
-        this.data_source = payload;
+        this.cmd = 'get_current_sensor_data';
+
+        if ((payload !== undefined) && ('cmd' in payload)){
+            this.cmd = payload['cmd'];
+        }
 
         this.columns = [
             {name: 'Time', style: 'min-width: 200px; max-width: 200px', 'label': 'date'},
@@ -1127,10 +1133,9 @@ class LogComponent extends TableTextComponent {
     }
 
     onShow(parent) {
-        let cmd = '../get_log_data';
         let params = {};
 
-        axios.get(cmd, {params: params}).then(response => {
+        axios.get(this.cmd, {params: params}).then(response => {
             if (response.status === 200) {
                 try {
                     this.data_source = response.data;
@@ -1152,7 +1157,7 @@ class SensorComponent extends FIWARETableComponent{
     constructor(payload) {
         super(payload);
 
-        this.cmd = 'get_current_sensor_data';
+        this.cmd = 'get_log_data';
 
         if ((payload !== undefined) && ('cmd' in payload)){
             this.cmd = payload['cmd'];
@@ -1312,8 +1317,10 @@ class NavPills extends HTMLComponent
         {
             let div = document.createElement('div');
             div.className = 'row';
-            div.style = 'height:20px;';
-            parent.appendChild(div);
+            div.id = 'this one';
+            div.style = 'height:22px;';
+            div.style.backgroundColor = '#f0f0f0';
+            //parent.appendChild(div);
         }
     }
 
