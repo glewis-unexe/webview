@@ -463,6 +463,7 @@ class Mapbox_Slider extends MapboxWidget{
         this.range.step="1";
         this.range.value="0";
 
+
         let self = this;
         this.range.onchange= function(){
             on_change(data_source, this.value);
@@ -1522,12 +1523,12 @@ class MapboxLayer_Geojson extends MapboxLayer
 
                     this.map.removeSource(this.layer_name);
                 }
-
+/*
                 if ((layer_data['features'].length > 0) && !('color' in layer_data['features'][0]['properties']))
                 {
                     this.build_from_colourmap(layer_data);
                 }
-
+*/
                 this.map.addSource(this.layer_name, {
                     type: 'geojson',
                     data: layer_data
