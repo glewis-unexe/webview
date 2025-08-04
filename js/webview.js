@@ -1397,6 +1397,10 @@ class MapboxLayer
         }
     }
 
+    set_visible(is_visible){
+        this.set_visibility(is_visible);
+    }
+
     get_display_name()
     {
         return 'my lovely name';
