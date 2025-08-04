@@ -108,6 +108,15 @@ class Random {
     }
 }
 
+function makeColor(r,g,b){
+    var color = '#';
+        color += r.toString(16).padStart(2,'0').toLowerCase();
+        color += g.toString(16).padStart(2,'0').toLowerCase();
+        color += b.toString(16).padStart(2,'0').toLowerCase();
+
+
+}
+
 random_colour_rand = new Random(1234);
 
 function getRandomColor() {
@@ -1948,16 +1957,18 @@ class MapboxComponent  extends HTMLComponent {
         }
 
         if (this.style_has_loaded) {
-            if (this.show_buildings){
+            if (this.show_buildings) {
                 this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'visible');
-            }else{
+            } else {
                 this.map.setLayoutProperty('add-3d-buildings', 'visibility', 'none');
             }
-
-            this.current_building_style_name = building_style;
         }
 
-        this.elements['map_buildings'].set_button_text('Buildings: ' + this.current_building_style_name);
+        this.current_building_style_name = building_style;
+
+        if('map_buildings' in this.elements) {
+            this.elements['map_buildings'].set_button_text('Buildings: ' + this.current_building_style_name);
+        }
     }
 
     set_projection_style(view_style){
