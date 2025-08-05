@@ -256,6 +256,49 @@ class CS8MapComponent  extends MapboxComponent {
 }
 
 
+class SliderDisplay extends MapboxWidget{
+    constructor(parent,rect, slider_callback, data_source) {
+        super(parent);
+
+        this.element.style.position = "absolute";
+        this.element.style.backgroundColor = "#fff";
+        this.element.style.color = "#000";
+        this.element.style.padding = "6px 12px";
+        this.element.style.zIndex = "1";
+        this.element.style.margin = "";
+
+
+        //important bit
+        this.size_element(rect);
+
+        this.heading = document.createElement('h4');
+        this.heading.innerText = 'Heading';
+        this.heading.style.textAlign = 'center';
+        this.element.appendChild(this.heading);
+
+        let r = {'left': '0px',
+                    'top': '20px',
+                    'width': '49vw',
+                    'height': '75px'
+        };
+
+        this.slider = new Mapbox_Slider(this.element,r, slider_callback, data_source);
+
+    }
+
+    set_heading(v){
+        this.heading.innerText = v;
+    }
+
+    set_max(v){
+        this.slider.set_max(v);
+    }
+    set_current(v){
+        this.slider.set_current(v);
+    }
+}
+
+
 class CS8AlbertVizComponent extends MapboxComponent{
     constructor() {
         super();
@@ -272,16 +315,16 @@ class CS8AlbertVizComponent extends MapboxComponent{
         this.current_viz_mode = '';
 
         this.impact_legends = [
-            {"text": "None",    "color": "#3f3f3f"},
-            {"text": "Type 1",  "color": '#ff0000'},
-            {"text": "Type 2",  "color": '#00ff00'},
-            {"text": "Type 3",  "color": '#0022ff'},
-            {"text": "Type 4",  "color": '#5f1573'},
-            {"text": "Type 5",  "color": '#ffb700'},
-            {"text": "Type 6",  "color": '#ffea55'},
-            {"text": "Type 7",  "color": '#80f1c1'},
-            {"text": "Type 8",  "color": '#1b96ac'},
-            {"text": "Type 9",  "color": '#1bac8a'},
+            {"text": 'No direct impact',                                            "color": "#3f3f3f"},
+            {"text": 'Direct impact only, level one',                               "color": '#ff0000'},
+            {"text": 'Direct impact only, level two',                               "color": '#00ff00'},
+            {"text": 'Direct impact only, level three',                             "color": '#0022ff'},
+            {"text": 'Indirect impact only',                                        "color": '#5f1573'},
+            {"text": 'Direct impact level one and at least one indirect impact',    "color": '#ffb700'},
+            {"text": 'Direct impact level two and at least one indirect impact',    "color": '#ffea55'},
+            {"text": 'Direct impact level three and at least one indirect impact',  "color": '#80f1c1'},
+            {"text": 'No direct impact, multiple dependent indirect impacts',       "color": '#1b96ac'},
+            {"text": 'Direct impact and multiple dependent indirect impacts',       "color": '#1bac8a'},
         ];
 
         this.damage_legends= [
@@ -295,6 +338,17 @@ class CS8AlbertVizComponent extends MapboxComponent{
             {"text": "<100,000,000",    "color": '#80f1c1', 'max_val': 10000000},
             {"text": ">100,000,000",    "color": '#1b96ac', 'max_val': 100000000},
         ];
+
+        this.flood_legends = [
+            {"text": "<0.1m",       "color": "#ffffff"},
+            {"text": "0.1-0.5m",    "color": "#ceecfe"},
+            {"text": "0.5-1.0m",    "color": "#9ccbfe"},
+            {"text": "1.0-2.0m",    "color": "#7299fe"},
+            {"text": "2.0-4.0m",    "color": "#4566fe"},
+            {"text": ">4.0m",       "color": "#1739ce"}
+        ];
+
+
 
         this.viz_mode_labels = ['Flood','Damage','Impact', 'None'];
     }
@@ -324,12 +378,23 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 let top = '70px';
                 let content_root = this.content;
 
-                this.elements['map.scenario.slider'] = new Mapbox_Slider(content_root, {
-                    'left': '25%',
-                    'top': 'calc(100vh - 100px)',
-                    'width': '50vw',
-                    'height': '25px'
-                }, this.scenario_slider_on_change, this);
+                if (true) {
+                    this.elements['map.scenario.slider'] = new SliderDisplay(content_root, {
+                        'left': '25%',
+                        'top': 'calc(100vh - 150px)',
+                        'width': '50vw',
+                        'height': '75px'
+                    }, this.scenario_slider_on_change, this);
+                }else {
+                    this.elements['map.scenario.slider'] = new Mapbox_Slider(content_root, {
+                        'left': '25%',
+                        'top': 'calc(100vh - 100px)',
+                        'width': '50vw',
+                        'height': '25px'
+                    }, this.scenario_slider_on_change, this);
+                }
+
+
 
                 if ('map.scenario.slider' in this.elements) {
                     this.elements['map.scenario.slider'].set_max(this.max_step.toString());
@@ -343,9 +408,9 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 });
 
                 this.elements['map.viz.mode'] = new Mapbox_dropdown(content_root, {
-                    'left': 'max(510px, 34vw)',
+                    'left': 'max(460px, 34vw)',
                     'top': top,
-                    'width': 'max(120px, 10vw)',
+                    'width': 'max(150px, 12vw)',
                 });
 
                 let self = this;
@@ -395,27 +460,60 @@ class CS8AlbertVizComponent extends MapboxComponent{
         }
     }
 
+    pretty_print_fiware_time(v){
+        return v.replace('T',' ').replace('Z','');
+    }
+
+    pretty_print_feature(v){
+        if (this.current_viz_mode === this.viz_mode_labels[0]) {
+            //flood
+            return 'Flood:' + str(v);
+        }
+
+        if (this.current_viz_mode === this.viz_mode_labels[1]) {
+            return 'Damage: ' + v.toLocaleString();
+        }
+
+        if (this.current_viz_mode === this.viz_mode_labels[2]) {
+            //impact
+            return this.impact_legends[v]['text'];
+        }
+
+        if (this.current_viz_mode === this.viz_mode_labels[3]) {
+            //none
+            return 'Shouldn\'t see this';
+        }
+
+        return 'Unknown';
+    }
+
 
     viz(step){
         let key = 'albert_damage_model';
 
         if ('map.flood.legend' in this.elements) {
             if (this.current_viz_mode === this.viz_mode_labels[0]) {
-                this.elements['map.flood.legend'].init(this.impact_legends);
+                this.elements['map.flood.legend'].init(this.flood_legends);
                 this.elements['map.flood.legend'].heading.innerText = 'Flood Legend';
                 this.elements['map.flood.legend'].set_visible(true);
+
+                this.elements['map.scenario.slider'].set_heading('Flood Heading');
             }
 
             if (this.current_viz_mode === this.viz_mode_labels[1]) {
                 this.elements['map.flood.legend'].init(this.damage_legends);
                 this.elements['map.flood.legend'].heading.innerText = 'Damage Legend';
                 this.elements['map.flood.legend'].set_visible(true);
+
+                this.elements['map.scenario.slider'].set_heading('Damage Timestep: ' + this.pretty_print_fiware_time(this.data['damage']['steps'][step] ));
             }
 
             if (this.current_viz_mode === this.viz_mode_labels[2]) {
                 this.elements['map.flood.legend'].init(this.impact_legends);
                 this.elements['map.flood.legend'].heading.innerText = 'Impact Legend';
                 this.elements['map.flood.legend'].set_visible(true);
+
+                this.elements['map.scenario.slider'].set_heading('Impact Timestep: ' + this.pretty_print_fiware_time(this.data['impact']['steps'][step]) );
             }
 
             if (this.current_viz_mode === this.viz_mode_labels[3]) {
@@ -431,8 +529,8 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 let id = this.data['geojson']['features'][i]['properties']['id'];
 
                 if (this.current_viz_mode === this.viz_mode_labels[1]) {
-                    if (id in this.data['damage']) {
-                        let val = this.data['damage'][id][step];
+                    if (id in this.data['damage']['data']) {
+                        let val = this.data['damage']['data'][id][step];
 
                         for (let j = 0; j < this.damage_legends.length; j++) {
                             if (val >= this.damage_legends[j]['max_val']) {
@@ -445,8 +543,8 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 }
 
                 if (this.current_viz_mode === this.viz_mode_labels[2]) {
-                    if (id in this.data['impact']) {
-                        let val = this.data['impact'][id][step];
+                    if (id in this.data['impact']['data']) {
+                        let val = this.data['impact']['data'][id][step];
 
                         if(val <0 || val >= this.impact_legends.length){
                             console.log();
@@ -512,13 +610,10 @@ class CS8AlbertVizComponent extends MapboxComponent{
                             } //impact
 
                             if (mode !== '') {
-                                if (id in this.data[mode]) {
-                                    text += 'ID:' + id;
-                                    try {
-                                        text += ' ' + this.data[mode][id][this.current_step].toLocaleString();
-                                    } catch (err) {
-                                        console.log();
-                                    }
+                                if (id in this.data[mode]['data']) {
+                                    text += ' ' + this.pretty_print_feature(this.data[mode]['data'][id][this.current_step]);
+                                }else{
+                                    text += ' ' + this.pretty_print_feature(0);
                                 }
                             }
                         }
@@ -528,7 +623,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
                     this.popup.remove();
                 } else {
                     this.popup.addTo(this.map);
-                    this.popup.setHTML(text);
+                    this.popup.setHTML('<H3>'+text +'</H3>');
                     this.popup.setLngLat(e.lngLat);
                 }
             }
