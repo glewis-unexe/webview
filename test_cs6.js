@@ -1,5 +1,5 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiZ2F6dGFzdGljIiwiYSI6ImNrYzA4Y2c4NjFoYnIyeHRicmZuaTgyMGQifQ.fkkbIOCwq4j70CqNeiBGcA';
-let server_url = 'http://localhost:8111/';
+let server_url = 'http://localhost:8112/';
 //let server_url = '';
 let global_data = {};
 

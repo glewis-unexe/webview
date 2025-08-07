@@ -1650,6 +1650,9 @@ class MapboxComponent  extends HTMLComponent {
 
         this.current_layer_name = '';
         this.layer_data = {};
+
+        this.button_top_row = '70px';
+        this.map_top_px = '50px';
     }
 
     oneTimeInit() {
@@ -1677,13 +1680,13 @@ class MapboxComponent  extends HTMLComponent {
         this.map_root = document.createElement('div');
         this.map_root.id = 'map';
         this.map_root.style.position = 'absolute';
-        this.map_root.style.top = '54px';
+        this.map_root.style.top = this.map_top_px;
         this.map_root.style.bottom = '0px';
         this.map_root.style.width = '100%';
 
         this.content.appendChild(this.map_root);
 
-        let top = '70px';
+
         let content_root = this.content;
 
         /*this.elements['map.info.textbox'] = new Mapbox_Textbox(content_root, {
@@ -1697,25 +1700,25 @@ class MapboxComponent  extends HTMLComponent {
 
         this.elements['map_style'] = new Mapbox_dropdown(content_root, {
             'left': '1vw',
-            'top': top,
+            'top': this.button_top_row,
             'width': 'max(160px, 10vw)',
         });
 
         this.elements['map_buildings'] = new Mapbox_dropdown(content_root, {
             'left': 'max(180px, 12vw)',
-            'top': top,
+            'top': this.button_top_row,
             'width': 'max(140px, 10vw)',
         });
 
         this.elements['map_projection'] = new Mapbox_dropdown(content_root, {
             'left': 'max(330px, 23vw)',
-            'top': top,
+            'top': this.button_top_row,
             'width': 'max(120px, 10vw)',
         });
 
         this.elements['map.pos.textbox'] = new Mapbox_Textbox(content_root, {
             'left': 'calc(100% - 375px)',
-            'top': top,
+            'top': this.button_top_row,
             'width': 'max(300px, 3vw)'
         } );
 

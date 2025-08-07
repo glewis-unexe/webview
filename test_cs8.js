@@ -1,260 +1,5 @@
 mapboxgl.accessToken = 'pk.eyJ1IjoiZ2F6dGFzdGljIiwiYSI6ImNrYzA4Y2c4NjFoYnIyeHRicmZuaTgyMGQifQ.fkkbIOCwq4j70CqNeiBGcA';
-let server_url = 'http://localhost:8333/';
-//let server_url = '';
-
-class MapboxLayer_MadGeojson extends MapboxLayer_Geojson{
-
-    constructor(layer_name, url, lines) {
-        super(layer_name, url, lines);
-
-        this.local_data = undefined;
-        this.col = new Random(1234);
-    }
-
-    init_from_data(map,layer_data, render_type, paint_data) {
-
-        this.local_data = layer_data;
-        this.col.reset();
-
-        for(let i=0;i< this.local_data['features'].length;i++){
-            this.local_data['features'][i]['properties']['color'] = '#aaaaaa';
-        }
-
-        paint_data = {
-                        'fill-color': ['get', 'color'],
-                        'fill-opacity': 0.5,
-                        };
-
-        super.init_from_data(map,this.local_data,render_type,paint_data);
-    }
-
-    update() {
-        let id = 215013;
-        this.local_data['features'][id]['properties']['color'] = this.col.getRandomColor();
-
-        super.update(this.local_data);
-    }
-}
-
-class CS8MapComponent  extends MapboxComponent {
-    constructor() {
-        super();
-
-        this.center = [-3.55156,50.43280,];
-        this.zoom = 12.5;
-        this.bearing = 0;
-        this.pitch = 0;
-        this.popup = undefined;
-
-        this.rainfall = {};
-        this.current_flood_step = 0;
-        this.global_data = {};
-    }
-
-    oneTimeInit() {
-        super.oneTimeInit();
-    }
-
-    onShow(parent) {
-        super.onShow(parent);
-
-        let cmd = server_url + 'get_map_data';
-
-        let params = {};
-
-        axios.get(cmd, {params: params}).then(response => {
-            if (response.status === 200) {
-
-                this.global_data = response.data;
-                this.popup = undefined;
-
-                let top = '70px';
-                let content_root = this.content;
-
-                this.elements['map.scenario.slider'] = new Mapbox_Slider(content_root, {
-                    'left': '25%',
-                    'top': 'calc(100vh - 100px)',
-                    'width': '50vw',
-                    'height': '25px'
-                }, this.scenario_slider_on_change, this);
-
-                if ('map.scenario.slider' in this.elements) {
-                    this.elements['map.scenario.slider'].set_max(Object.keys(this.global_data['floodmap']).length.toString());
-                    this.elements['map.scenario.slider'].set_current(this.current_flood_step.toString());
-                }
-
-                this.elements['map.flood.legend'] = new Mapbox_LegendList(content_root, {
-                    'left': '1vw',
-                    'top': '200px',
-                });
-
-                if ('map.flood.legend' in this.elements) {
-
-                    let temp = [
-                        {
-                            "text": "<0.1m",
-                            "color": "#ffffff"
-                        },
-                        {
-                            "text": "0.1-0.5m",
-                            "color": "#ceecfe"
-                        },
-                        {
-                            "text": "0.5-1.0m",
-                            "color": "#9ccbfe"
-                        },
-                        {
-                            "text": "1.0-2.0m",
-                            "color": "#7299fe"
-                        },
-                        {
-                            "text": "2.0-4.0m",
-                            "color": "#4566fe"
-                        },
-                        {
-                            "text": ">4.0m",
-                            "color": "#1739ce"
-                        }
-                    ];
-
-                    this.elements['map.flood.legend'].init(temp);
-                }
-            }
-        }).catch(function (error) {
-            if (error.response) {
-                console.log(arguments, 'Error:' + cmd + ' ' + error.response.data);
-            }
-        });
-    }
-
-    scenario_slider_on_change(self, value){
-
-        let label = Object.keys(self.global_data['floodmap'])[parseInt(value)];
-
-        self.set_layer(label);
-
-        self.mad_layer.update();
-
-    }
-
-
-    on_mouse_move(e){
-        super.on_mouse_move(e);
-
-        if(this.map === undefined){
-            return;
-        }
-
-        try {
-            let loc = this.map.getCenter();
-            let features = undefined;
-
-            if (e !== undefined) {
-                features = this.map.queryRenderedFeatures(e.point);
-                loc = e.lngLat;
-            }
-
-            if (this.popup !== undefined) {
-                let text = '';
-
-                if (features !== undefined)
-
-                    for (let i = 0; i < features.length; i++) {
-                        if (features[i].source === 'mad_layer'){
-                            if (text.length) {
-                                text += '<br>';
-                            }
-
-                            text += 'ID:' + features[i]['properties']['id'];
-                        }else{
-                            if (('properties' in features[i]) && ('depth' in features[i]['properties'])){
-                                if (text.length) {
-                                    text += '<br>';
-                                }
-
-                                text += 'Depth:' + features[i]['properties']['depth'] +'m';
-                            }
-
-                         }
-                    }
-
-                if (text.length == 0) {
-                    this.popup.remove();
-                } else {
-                    this.popup.addTo(this.map);
-                    this.popup.setHTML(text);
-                    this.popup.setLngLat(e.lngLat);
-                }
-            }
-        }catch(err){
-            console.log(err);
-        }
-    }
-
-    on_style_load(){
-        super.on_style_load();
-
-        this.popup = new mapboxgl.Popup({
-            offset: 25,
-            maxWidth: 1200,
-            closeButton: false,
-            closeOnClick: true
-        });
-
-        this.rainfall = {};
-
-        random_colour_rand.reset();
-
-        let fill_data = {
-                        'fill-color': ['get', 'color'],
-                        'fill-opacity': 1.0,
-                        };
-
-        let line_data = {
-                    'line-color': '#000000',
-                    'line-width': {
-                        'base': 0.1,
-                        'stops': [
-                            [1, 0.1],
-                            [6, 0.1],
-                            [10, 0.1],
-                            [12, 0.01],
-                            [15, 0.1],
-                            [22, 0.8]
-                        ]
-                    }
-                    };
-
-        let key = 'mad_layer';
-        this.mad_layer = new MapboxLayer_MadGeojson(key, server_url + 'get_mad_data', true);
-        this.mad_layer.edge_paint = line_data;
-        this.mad_layer.edge_paint["line-color"] = '#000000';
-        this.mad_layer.render_type = 'fill';
-        this.mad_layer.init(this.map,true);
-
-
-        for (const [key, value] of Object.entries(this.global_data['floodmap'])) {
-            this.rainfall[key] = new MapboxLayer_Geojson(key, undefined, false);
-            this.rainfall[key].edge_paint = line_data;
-            this.rainfall[key].edge_paint["line-color"] = '#000000';
-            this.rainfall[key].paint_data = fill_data;
-            this.rainfall[key].render_type = 'fill';
-
-            this.rainfall[key].init_from_data(this.map, value, 'fill', fill_data);
-        }
-
-        this.set_layer(Object.keys(this.global_data['floodmap'])[0]);
-    }
-
-    set_layer(label){
-        for (const [key, value] of Object.entries(this.rainfall)) {
-            this.rainfall[key].set_visible(false);
-        }
-
-        this.rainfall[label].set_visible(true);
-    }
-}
-
+let server_url = 'http://localhost:8112/cs8_app/';
 
 class SliderDisplay extends MapboxWidget{
     constructor(parent,rect, slider_callback, data_source) {
@@ -310,6 +55,8 @@ class CS8AlbertVizComponent extends MapboxComponent{
         this.popup = undefined;
         this.layers = {};
 
+        this.rainfall = {};
+
         this.current_step = 0;
         this.max_step = 199;
         this.current_viz_mode = '';
@@ -349,15 +96,23 @@ class CS8AlbertVizComponent extends MapboxComponent{
         ];
 
 
+        this.map_top_px = '50px';
+        this.button_top_row = 'calc(' + this.map_top_px + ' + 20px)';
 
-        this.viz_mode_labels = ['Flood','Damage','Impact', 'None'];
+
+
+        this.viz_mode_labels = ['Damage','Impact', 'None'];
+        this.damage_index = 0;
+        this.impact_index = 1;
+        this.none_index = 2;
+
     }
 
     oneTimeInit() {
         super.oneTimeInit();
         this.set_building_style('Off');
 
-        this.set_viz_mode(this.viz_mode_labels[3]);
+        this.set_viz_mode(this.viz_mode_labels[this.none_index]);
     }
 
 
@@ -375,26 +130,16 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 this.data = response.data;
                 this.popup = undefined;
 
-                let top = '70px';
+                this.max_step = this.data['caflood']['timesteps'].length;
+
                 let content_root = this.content;
 
-                if (true) {
-                    this.elements['map.scenario.slider'] = new SliderDisplay(content_root, {
-                        'left': '25%',
-                        'top': 'calc(100vh - 150px)',
-                        'width': '50vw',
-                        'height': '75px'
-                    }, this.scenario_slider_on_change, this);
-                }else {
-                    this.elements['map.scenario.slider'] = new Mapbox_Slider(content_root, {
-                        'left': '25%',
-                        'top': 'calc(100vh - 100px)',
-                        'width': '50vw',
-                        'height': '25px'
-                    }, this.scenario_slider_on_change, this);
-                }
-
-
+                this.elements['map.scenario.slider'] = new SliderDisplay(content_root, {
+                    'left': '25%',
+                    'top': 'calc(100vh - 200px)',
+                    'width': '50vw',
+                    'height': '75px'
+                }, this.scenario_slider_on_change, this);
 
                 if ('map.scenario.slider' in this.elements) {
                     this.elements['map.scenario.slider'].set_max(this.max_step.toString());
@@ -409,7 +154,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
 
                 this.elements['map.viz.mode'] = new Mapbox_dropdown(content_root, {
                     'left': 'max(460px, 34vw)',
-                    'top': top,
+                    'top': this.button_top_row,
                     'width': 'max(150px, 12vw)',
                 });
 
@@ -438,7 +183,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
         if(this.style_has_loaded){
             let key = 'albert_damage_model';
 
-            if((this.current_viz_mode === this.viz_mode_labels[1]) || (this.current_viz_mode === this.viz_mode_labels[2])) {
+            if((this.current_viz_mode === this.viz_mode_labels[this.damage_index]) || (this.current_viz_mode === this.viz_mode_labels[this.impact_index])) {
                 this.layers[key].set_visible(true);
             }else{
                 this.layers[key].set_visible(false);
@@ -448,7 +193,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
         }
 
         if( 'map.scenario.slider' in this.elements) {
-            if ((this.current_viz_mode === this.viz_mode_labels[0]) || (this.current_viz_mode === this.viz_mode_labels[3])) {
+            if (this.current_viz_mode === this.viz_mode_labels[this.none_index]) {
                 this.elements['map.scenario.slider'].set_visible(false);
             } else {
                 this.elements['map.scenario.slider'].set_visible(true);
@@ -465,21 +210,17 @@ class CS8AlbertVizComponent extends MapboxComponent{
     }
 
     pretty_print_feature(v){
-        if (this.current_viz_mode === this.viz_mode_labels[0]) {
-            //flood
-            return 'Flood:' + str(v);
-        }
 
-        if (this.current_viz_mode === this.viz_mode_labels[1]) {
+        if (this.current_viz_mode === this.viz_mode_labels[this.damage_index]) {
             return 'Damage: ' + v.toLocaleString();
         }
 
-        if (this.current_viz_mode === this.viz_mode_labels[2]) {
+        if (this.current_viz_mode === this.viz_mode_labels[this.impact_index]) {
             //impact
             return this.impact_legends[v]['text'];
         }
 
-        if (this.current_viz_mode === this.viz_mode_labels[3]) {
+        if (this.current_viz_mode === this.viz_mode_labels[this.none_index]) {
             //none
             return 'Shouldn\'t see this';
         }
@@ -492,15 +233,8 @@ class CS8AlbertVizComponent extends MapboxComponent{
         let key = 'albert_damage_model';
 
         if ('map.flood.legend' in this.elements) {
-            if (this.current_viz_mode === this.viz_mode_labels[0]) {
-                this.elements['map.flood.legend'].init(this.flood_legends);
-                this.elements['map.flood.legend'].heading.innerText = 'Flood Legend';
-                this.elements['map.flood.legend'].set_visible(true);
 
-                this.elements['map.scenario.slider'].set_heading('Flood Heading');
-            }
-
-            if (this.current_viz_mode === this.viz_mode_labels[1]) {
+            if (this.current_viz_mode === this.viz_mode_labels[this.damage_index]) {
                 this.elements['map.flood.legend'].init(this.damage_legends);
                 this.elements['map.flood.legend'].heading.innerText = 'Damage Legend';
                 this.elements['map.flood.legend'].set_visible(true);
@@ -508,7 +242,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 this.elements['map.scenario.slider'].set_heading('Damage Timestep: ' + this.pretty_print_fiware_time(this.data['damage']['steps'][step] ));
             }
 
-            if (this.current_viz_mode === this.viz_mode_labels[2]) {
+            if (this.current_viz_mode === this.viz_mode_labels[this.impact_index]) {
                 this.elements['map.flood.legend'].init(this.impact_legends);
                 this.elements['map.flood.legend'].heading.innerText = 'Impact Legend';
                 this.elements['map.flood.legend'].set_visible(true);
@@ -516,9 +250,22 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 this.elements['map.scenario.slider'].set_heading('Impact Timestep: ' + this.pretty_print_fiware_time(this.data['impact']['steps'][step]) );
             }
 
-            if (this.current_viz_mode === this.viz_mode_labels[3]) {
+            if (this.current_viz_mode === this.viz_mode_labels[this.none_index]) {
                 this.elements['map.flood.legend'].heading.innerText = 'Hide Me!';
                 this.elements['map.flood.legend'].set_visible(false);
+            }
+        }
+
+        for (const [key, value] of Object.entries(this.rainfall)) {
+
+            value.set_visible(false);
+
+            if (this.current_viz_mode !== this.viz_mode_labels[this.none_index]){
+
+                if (key === this.data['caflood']['timesteps'][step].toString())
+                {
+                    value.set_visible(true);
+                }
             }
         }
 
@@ -528,7 +275,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 let c = '#ff00ff';
                 let id = this.data['geojson']['features'][i]['properties']['id'];
 
-                if (this.current_viz_mode === this.viz_mode_labels[1]) {
+                if (this.current_viz_mode === this.viz_mode_labels[this.damage_index]) {
                     if (id in this.data['damage']['data']) {
                         let val = this.data['damage']['data'][id][step];
 
@@ -542,7 +289,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
                     }
                 }
 
-                if (this.current_viz_mode === this.viz_mode_labels[2]) {
+                if (this.current_viz_mode === this.viz_mode_labels[this.impact_index]) {
                     if (id in this.data['impact']['data']) {
                         let val = this.data['impact']['data'][id][step];
 
@@ -572,6 +319,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
     }
 
     on_mouse_move(e){
+
         super.on_mouse_move(e);
 
         if(this.map === undefined){
@@ -593,6 +341,20 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 if (features !== undefined)
 
                     for (let i = 0; i < features.length; i++) {
+                        if (features[i].source.includes('floodmap-')) {
+                            if (text.length) {
+                                text += '<br>';
+                            }
+
+                            if (('properties' in features[i]) && ('depth' in features[i]['properties'])){
+                                if (text.length) {
+                                    text += '<br>';
+                                }
+
+                                text += 'Depth:' + features[i]['properties']['depth'] +'m';
+                            }
+                        }
+
                         if (features[i].source === 'albert_damage_model') {
                             if (text.length) {
                                 text += '<br>';
@@ -601,11 +363,11 @@ class CS8AlbertVizComponent extends MapboxComponent{
 
                             let mode = '';
 
-                            if (this.current_viz_mode === this.viz_mode_labels[1]){
+                            if (this.current_viz_mode === this.viz_mode_labels[this.damage_index]){
                                 mode = 'damage';
                             } //damage
 
-                            if (this.current_viz_mode === this.viz_mode_labels[2]){
+                            if (this.current_viz_mode === this.viz_mode_labels[this.impact_index]){
                                 mode = 'impact';
                             } //impact
 
@@ -616,6 +378,8 @@ class CS8AlbertVizComponent extends MapboxComponent{
                                     text += ' ' + this.pretty_print_feature(0);
                                 }
                             }
+
+                            //text += ' ID:' + id.toString();
                         }
                     }
 
@@ -643,8 +407,6 @@ class CS8AlbertVizComponent extends MapboxComponent{
             closeOnClick: true
         });
 
-
-
         //build visualisation here ...
         let fill_data = {
             'fill-color': ['get', 'color'],
@@ -665,6 +427,16 @@ class CS8AlbertVizComponent extends MapboxComponent{
                 ]
             }
         };
+
+        for (const [key, value] of Object.entries(this.data['caflood']['floodmap'])) {
+            this.rainfall[key] = new MapboxLayer_Geojson('floodmap-'+key, undefined, true);
+            this.rainfall[key].edge_paint = line_data;
+            this.rainfall[key].paint_data = JSON.parse( JSON.stringify(fill_data));
+            this.rainfall[key].paint_data['fill-opacity'] =1.0;
+            this.rainfall[key].render_type = 'fill';
+
+            this.rainfall[key].init_from_data(this.map, value, 'fill', this.rainfall[key].paint_data);
+        }
 
         let key = 'albert_damage_model';
         this.layers[key] = new MapboxLayer_Geojson(key, undefined, true);
@@ -689,7 +461,6 @@ class AppScreen extends Screen_base
         let h = 'calc(100vh - 60px)';
 
         this.components = {};
-        this.components['Map'] = new CS8MapComponent();
         this.components['CS8AlbertVizComponent'] = new CS8AlbertVizComponent();
 
         for (const [key, component] of Object.entries(this.components)) {
@@ -733,7 +504,9 @@ class AppScreen extends Screen_base
     }
 }
 
-let app = new AppScreen();
+//let app = new AppScreen();
+let app = new CS8AlbertVizComponent();
+
 function app_init(root) {
 
     let content_root = document.createElement('div');
