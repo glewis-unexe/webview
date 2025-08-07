@@ -1655,6 +1655,7 @@ class MapboxComponent  extends HTMLComponent {
         this.map_top_px = '50px';
     }
 
+    
 
     oneTimeInit() {
         super.oneTimeInit();
