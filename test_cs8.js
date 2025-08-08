@@ -96,7 +96,7 @@ class CS8AlbertVizComponent extends MapboxComponent{
         ];
 
 
-        this.map_top_px = '50px';
+        this.map_top_px = '0px';
         this.button_top_row = 'calc(' + this.map_top_px + ' + 20px)';
 
 
